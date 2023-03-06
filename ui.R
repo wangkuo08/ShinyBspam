@@ -1,51 +1,82 @@
+library(shiny)
+library(shinythemes)
+library(tidyverse)
+library(bspam)
 # Define UI for dataset viewer app ----
 ui <- fluidPage(
+  navbarPage("BSpam Shiny", theme = shinytheme("lumen"),
+             # add welcome tab
+             #
+             tabPanel("Select Dataset", fluid = TRUE, icon = icon("globe-americas"),
+                      #tags$style(button_color_css),
+                      # Sidebar layout with a input and output definitions
+                      sidebarLayout(
+                        sidebarPanel(
+                          # App title ----
+                          titlePanel("Please Select Dataset"),
 
-  # App title ----
-  titlePanel("bspam Shiny"),
-
-  # Sidebar layout with input and output definitions ----
-  sidebarLayout(
-
-    # Sidebar panel for inputs ----
-    sidebarPanel(
+                              # Input: Selector for choosing dataset ----
+                              selectInput(inputId = "dataset",
+                                          label = "Choose your dataset:",
+                                          choices = c("rock", "pressure", "cars")),
 
 
-      # Input: Selector for choosing dataset ----
-      selectInput(inputId = "dataset",
-                  label = "Choose your dataset:",
-                  choices = c("rock", "pressure", "cars")),
+                              # Input: Numeric entry for number of obs to view ----
+                              numericInput(inputId = "obs",
+                                           label = "Number of observations to view:",
+                                           value = 10)
 
-      # Input: Selector for choosing functions ----
-      selectInput(inputId = "selected_func_name",
-                  label = "Choose a function:",
-                  choices = c("fit.model", "scoring", "prep")),
+                            ),
+                          # Main panel for displaying outputs ----
+                          mainPanel(
 
-      # Copy the line below to make a checkbox
-      checkboxInput("checkbox", label = "Choice A", value = TRUE),
+                            # Output: Formatted text for caption ----
+                            h3(textOutput("caption", container = span)),
 
-      # Input: Numeric entry for number of obs to view ----
-      numericInput(inputId = "obs",
-                   label = "Number of observations to view:",
-                   value = 10)
+                            # Output: Verbatim text for data summary ----
+                            verbatimTextOutput("summary"),
 
-    ),
+                            # Output: HTML table with requested number of observations ----
+                            tableOutput("view")
 
-    # Main panel for displaying outputs ----
-    mainPanel(
+                          )
 
-      # Output: Formatted text for caption ----
-      h3(textOutput("caption", container = span)),
+                        )
+            ),
+            tabPanel("Fit Model", fluid = TRUE, icon = icon("chart-bar"),
+                      #tags$style(button_color_css),
+                      # Sidebar layout with a input and output definitions
+                      sidebarLayout(
+                        sidebarPanel(
+                          # App title ----
+                          titlePanel("Set Parameters"),
 
-      # Output: Verbatim text for data summary ----
-      verbatimTextOutput("summary"),
+                          # Input: Selector for choosing functions ----
+                          selectInput(inputId = "selected_func_name",
+                                      label = "Choose a function:",
+                                      choices = c("fit.model", "scoring", "prep")),
 
-      # Output: HTML table with requested number of observations ----
-      tableOutput("view")
+                          # Copy the line below to make a checkbox
+                          checkboxInput("checkbox", label = "Choice A", value = TRUE),
 
-    )
+                          # Input: Numeric entry for number of obs to view ----
+                          numericInput(inputId = "obs",
+                                       label = "Number of observations to view:",
+                                       value = 10)
+
+                        ),
+                        # Main panel for displaying outputs ----
+                        mainPanel(
+
+                        )
+
+                      )
+            ),
+       )
   )
-)
+
+
+
 
 # Define server logic to summarize and view selected dataset ----
 server <- function(input, output) {
