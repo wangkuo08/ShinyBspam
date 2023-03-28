@@ -10,9 +10,9 @@ ui <- fluidPage(
                         tabPanel("Welcome Page", fluid = TRUE,
                                  fluidRow(
                                    column(6,
-                                          h4(p("Welcome to bspam Shiny App!")),
-                                          h5(p("This is the interactive dasboard that will allow users to use the bspam R package for data preparation, passage calibration, and WCPM score estimation. For a more detailed information about the bspam package, please see the ",
-                                               a("GitHub page.",
+                                          h4(p("Welcome to bspam Shiny App!!")),
+                                          h5(p("This is the interactive dasboard for bspam R package to perform data preparation, passage calibration, and WCPM score estimation. For a more detailed information about the bspam package, please ",
+                                               a("click here.",
                                                  href = "https://github.com/kamataak/bspam"))
                                           )
                                    ))
