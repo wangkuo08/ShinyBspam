@@ -1,4 +1,5 @@
 library(shiny)
+#library(shinyjs)
 library(shinythemes)
 library(tidyverse)
 library(readr)
@@ -52,7 +53,15 @@ ui <- fluidPage(
                               # Input: Selector for choosing dataset ----
                           selectInput(inputId = "dataset",
                                       label = HTML("<b>Choose your dataset:</b>"),
-                                      choices = c("MCEM", "passage", "passage2", "cars")),
+                                      choices = c("none","passage")),
+                          # selectizeInput(
+                          #   'dataset', 'Dataset',
+                          #   choices = c("passage"),
+                          #   options = list(
+                          #     placeholder = HTML("<b>Choose your dataset:</b>"),
+                          #     onInitialize = I('function() { this.setValue(""); }')
+                          #   )
+                          # ),
                           selectInput(inputId = "datafile",
                                       label = HTML("<b>Load data of type:</b>"),
                                       choices = c("rds | rda | rdata", "csv | tsv")),
@@ -99,6 +108,8 @@ ui <- fluidPage(
                           ),
                           # Main panel for displaying outputs ----
                           mainPanel(
+                            # useShinyjs(),
+                            # style = "overflow-y:scroll; max-height: 800px; position:relative; align: centre",
 
                             # Output: Formatted text for caption ----
                             h3(textOutput("caption", container = span)),
@@ -149,26 +160,26 @@ ui <- fluidPage(
                        sidebarPanel(
                          # App title ----
                          titlePanel("Set Parameters"),
-                         
+
                          # Input: Selector for choosing functions ----
                          selectInput(inputId = "selected_func_name",
                                      label = "Choose a function:",
                                      choices = c("fit.model", "scoring", "prep")),
-                         
+
                          # Copy the line below to make a checkbox
                          checkboxInput("checkbox", label = "Choice A", value = TRUE),
-                         
+
                          # Input: Numeric entry for number of obs to view ----
                          numericInput(inputId = "obs",
                                       label = "Number of observations to view:",
                                       value = 10)
-                         
+
                        ),
                        # Main panel for displaying outputs ----
                        mainPanel(
-                         
+
                        )
-                       
+
                      )
             ),
 
@@ -181,14 +192,20 @@ server <- function(input, output, session) {
 
   # Define variables
   saveData <- NULL
+  uploaded_data <- NULL
+
+  docs <- "Guidence for Preparing data..."
+
+  output$caption <- renderText({
+    docs
+  })
 
   # Return the requested dataset ----
   datasetInput <- reactive({
     switch(input$dataset,
+           "none" = NULL,
            "MCEM" = MCEM,
-           "passage" = passage,
-           "passage2" = passage2,
-           "cars" = cars)
+           "passage" = passage)
   })
 
   # get data set columns name
@@ -204,19 +221,31 @@ server <- function(input, output, session) {
     # updateSelectInput(inputId = "time", choices = choices_list)
 
     output$summary <- renderPrint({
-      dataset <- datasetInput()
-      #browser()
-      if (class(dataset)[1] == "fit.model") {
-        dataset %>% summary()
-      } else {
-        summary(dataset)
-      }
 
+      if (!is.null(datasetInput())) {
+        output$caption <- renderText({
+          NULL
+        })
+        dataset <- datasetInput()
+        #browser()
+        if (class(dataset)[1] == "fit.model") {
+          dataset %>% summary()
+        } else {
+          summary(dataset)
+        }
+
+      } else {
+          output$caption <- renderText({
+            docs
+          })
+      }
     })
     output$view <- renderTable({
       head(datasetInput(), n = input$obs)
     })
+
   })
+
 
   # upload file
   Upload_data <- reactive({
@@ -228,14 +257,22 @@ server <- function(input, output, session) {
       df <- vroom::vroom(input$upload$datapath, delim = "\t")
     } else if (ext == "rds") {
       df <- readRDS(input$upload$datapath)
+    } else if (ext == "rda" | ext == "RData" | ext == "rdata") {
+      tf <- load(file=input$upload$datapath)
+      df <- get(tf)
+      rm(tf) # delete temp data
     } else {
       validate("Invalid file; Please upload a file with correct extension name")
     }
 
     # first try simple one
 #    df <- readRDS(input$upload$datapath)
-#    print(df)
+
     updateList(df)
+
+    output$caption <- renderText({
+      NULL
+    })
     output$summary <- renderPrint({
       summary(df)
     })
@@ -247,6 +284,8 @@ server <- function(input, output, session) {
 
   # run button
   observeEvent(input$getUploadBtn, {
+    uploaded_data <<- Upload_data()
+
     updateList(Upload_data())
     output$summary <- renderPrint({
       summary(Upload_data())
@@ -254,6 +293,7 @@ server <- function(input, output, session) {
     output$view <- renderTable({
       head(Upload_data(), n = input$obs)
     })
+
   })
 
   # observeEvent(Upload_data(), {
@@ -266,27 +306,72 @@ server <- function(input, output, session) {
   #   })
   # })
 
+  # reset button
+  observeEvent(input$resetBtn, {
+
+    updateSelectInput(session,inputId = "dataset", selected = "none")
+    updateSelectInput(session,inputId = "person.id", selected = character(0))
+    updateSelectInput(session,inputId = "occasion", selected = character(0))
+    updateSelectInput(session,inputId = "group", selected = character(0))
+    updateSelectInput(session,inputId = "task.id", selected = character(0))
+    updateSelectInput(session,inputId = "max.counts", selected = character(0))
+    updateSelectInput(session,inputId = "obs.counts", selected = character(0))
+    updateSelectInput(session,inputId = "time", selected = character(0))
+
+  })
+
   # run button
   observeEvent(input$runBtn, {
     #browser()
-    small_data <- prep(data = datasetInput(),
-                       person.id = input$person.id,
-                       occasion = input$occasion,
-                       group = input$group,
-                       task.id = input$task.id,
-                       max.counts = input$max.counts,
-                       obs.counts = input$obs.counts,
-                       time = input$time)
+    if (!is.null(datasetInput())) {
+      data.name <- datasetInput()
+    } else {
+      if (!is.null(uploaded_data)) {
+        data.name <- uploaded_data
+      }
+    }
+    if (exists("data.name")) {
+      if (input$person.id == "" |
+          input$occasion == "" |
+          input$group == "" |
+          input$task.id == "" |
+          input$max.counts == "" |
+          input$obs.counts == "" |
+          input$time == "" ) {
+        showModal(modalDialog(
+          title = "Error",
+          "Please set all arguments!",
+          easyClose = TRUE
+        ))
+        return()
+      }
+      small_data <- prep(data = data.name,
+                         person.id = input$person.id,
+                         occasion = input$occasion,
+                         group = input$group,
+                         task.id = input$task.id,
+                         max.counts = input$max.counts,
+                         obs.counts = input$obs.counts,
+                         time = input$time)
 
-    saveData <<- small_data
+      saveData <<- small_data
 
-    output$summary <- renderPrint({
-      summary(small_data)
-    })
-    output$view <- renderTable({
-       head(small_data$data.long, n = input$obs)
-    })
-
+      output$summary <- renderPrint({
+        summary(small_data)
+      })
+      output$view <- renderTable({
+        head(small_data$data.long, n = input$obs)
+      })
+    } else {
+      showModal(modalDialog(
+        title = "Error",
+        "Please select dataset or upload a datafile!",
+        easyClose = TRUE
+      ))
+    #   runjs('
+    #   document.getElementById("caption").scrollIntoView();
+    # ')
+    }
 
   })
 
@@ -315,29 +400,16 @@ server <- function(input, output, session) {
 
   updateList <- function(df) {
     choices_list = colnames(df)
-    updateSelectInput(inputId = "person.id", choices = choices_list)
-    updateSelectInput(inputId = "occasion", choices = choices_list)
-    updateSelectInput(inputId = "group", choices = choices_list)
-    updateSelectInput(inputId = "task.id", choices = choices_list)
-    updateSelectInput(inputId = "max.counts", choices = choices_list)
-    updateSelectInput(inputId = "obs.counts", choices = choices_list)
-    updateSelectInput(inputId = "time", choices = choices_list)
+    updateSelectInput(inputId = "person.id", choices = choices_list, selected = character(0))
+    updateSelectInput(inputId = "occasion", choices = choices_list, selected = character(0))
+    updateSelectInput(inputId = "group", choices = choices_list, selected = character(0))
+    updateSelectInput(inputId = "task.id", choices = choices_list, selected = character(0))
+    updateSelectInput(inputId = "max.counts", choices = choices_list, selected = character(0))
+    updateSelectInput(inputId = "obs.counts", choices = choices_list, selected = character(0))
+    updateSelectInput(inputId = "time", choices = choices_list, selected = character(0))
 
   }
-  # Create caption ----
-  # The output$caption is computed based on a reactive expression
-  # that returns input$caption. When the user changes the
-  # "caption" field:
-  #
-  # 1. This function is automatically called to recompute the output
-  # 2. New caption is pushed back to the browser for re-display
-  #
-  # Note that because the data-oriented reactive expressions
-  # below don't depend on input$caption, those expressions are
-  # NOT called when input$caption changes
-  # output$caption <- renderText({
-  #   input$caption
-  # })
+
 
   # Generate a summary of the dataset ----
   # The output$summary depends on the datasetInput reactive
