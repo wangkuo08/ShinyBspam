@@ -8,6 +8,7 @@ library(bspam)
 
 # Define UI for dataset viewer app ----
 ui <- fluidPage(
+  
   navbarPage("bspam Shiny App", theme = shinytheme("lumen"),
              # add welcome tab
              navbarMenu("Welcome", icon = icon("info-circle"),
@@ -46,13 +47,16 @@ ui <- fluidPage(
                       #tags$style(button_color_css),
                       # Sidebar layout with a input and output definitions
                       sidebarLayout(
+                        #sidebarPanel(titlePanel("Please Select Dataset")),
+                      
                         sidebarPanel(
+       hr(style = "border-top: 2px solid #D3D3D3;"), 
                           # App title ----
-                          titlePanel("Please Select Dataset"),
+                          titlePanel("Try bspam datasets"),
 
                               # Input: Selector for choosing dataset ----
                           selectInput(inputId = "dataset",
-                                      label = HTML("<b>Choose your dataset:</b>"),
+                                      label = HTML("<b> Select </b>"),
                                       choices = c("none","passage")),
                           # selectizeInput(
                           #   'dataset', 'Dataset',
@@ -62,12 +66,20 @@ ui <- fluidPage(
                           #     onInitialize = I('function() { this.setValue(""); }')
                           #   )
                           # ),
+                          
+         hr(style = "border-top: 2px solid #D3D3D3;"), 
+                          titlePanel("Load your dataset"), 
+                          
                           selectInput(inputId = "datafile",
-                                      label = HTML("<b>Load data of type:</b>"),
+                                      label = HTML("<b> Select your file type </b>"),
                                       choices = c("rds | rda | rdata", "csv | tsv")),
 
                           fileInput(inputId = "upload", NULL, multiple = FALSE),
-                          actionButton(inputId = "getUploadBtn", label = "ReadUploadData"),
+                          actionButton(inputId = "getUploadBtn", label = "Cick to load"),
+                          
+         hr(style = "border-top: 2px solid #D3D3D3;"),
+                          
+                          titlePanel("Assign column names"),
 
                           # person.id = "id.student",
                           # occasion = "occasion",
@@ -76,7 +88,7 @@ ui <- fluidPage(
                           # max.counts = "numwords.pass",
                           # obs.counts = "wrc",
                           # time = "sec"
-                          h4("Set arguments:"),
+                         # h4("Set arguments:"),
 
                           selectInput(inputId = "person.id",
                                       label = "person.id", choices = NULL),
@@ -92,6 +104,8 @@ ui <- fluidPage(
                                       label = "obs.counts", choices = NULL),
                           selectInput(inputId = "time",
                                       label = "time", choices = NULL),
+                         
+          hr(style = "border-top: 2px solid #D3D3D3;"), 
 
                           # Input: Numeric entry for number of obs to view ----
                           numericInput(inputId = "obs",
@@ -100,26 +114,29 @@ ui <- fluidPage(
 
                           actionButton(inputId = "runBtn", label = "Run", icon = icon("gears")),
                           actionButton(inputId = "resetBtn", label = "Reset", styleclass = "warning"),
-                          textInput(inputId = "saveas", "Save result as:"),
+                          textInput(inputId = "saveas", "Name your dataset"),
                           downloadButton("downloadData", "Save Prepared Data")
 #                          actionButton(inputId = "saveBtn", label = "Save", icon = icon("floppy-disk"))
 
 
                           ),
+
                           # Main panel for displaying outputs ----
                           mainPanel(
                             # useShinyjs(),
                             # style = "overflow-y:scroll; max-height: 800px; position:relative; align: centre",
-
+                            
                             # Output: Formatted text for caption ----
-                            h3(textOutput("caption", container = span)),
-
+                           
+                            
                             # Output: Verbatim text for data summary ----
-                            verbatimTextOutput("summary"),
-
+                            
+                            
                             # Output: HTML table with requested number of observations ----
-                            tableOutput("view")
-
+                            tabsetPanel(
+                              tabPanel("Explore", dataTableOutput("view")),
+                              tabPanel("Summary", verbatimTextOutput("summary")) 
+                            )
                           )
 
                         )
@@ -194,17 +211,16 @@ server <- function(input, output, session) {
   saveData <- NULL
   uploaded_data <- NULL
 
-  docs <- "Guidence for Preparing data..."
+ # docs <- "Guidence for Preparing data..."
 
-  output$caption <- renderText({
-    docs
-  })
+ #output$caption <- renderText({
+  #  docs
+ # })
 
   # Return the requested dataset ----
   datasetInput <- reactive({
     switch(input$dataset,
            "none" = NULL,
-           "MCEM" = MCEM,
            "passage" = passage)
   })
 
@@ -240,8 +256,9 @@ server <- function(input, output, session) {
           })
       }
     })
-    output$view <- renderTable({
-      head(datasetInput(), n = input$obs)
+   # output$view <- renderDataTable(print(datasetInput()))
+  output$view <- renderDataTable({
+      head(as_tibble(datasetInput()), n = input$obs)
     })
 
   })
@@ -290,7 +307,7 @@ server <- function(input, output, session) {
     output$summary <- renderPrint({
       summary(Upload_data())
     })
-    output$view <- renderTable({
+    output$view <- renderDataTable({
       head(Upload_data(), n = input$obs)
     })
 
@@ -431,11 +448,12 @@ server <- function(input, output, session) {
   # The output$view depends on both the databaseInput reactive
   # expression and input$obs, so it will be re-executed whenever
   # input$dataset or input$obs is changed
-#  output$view <- renderTable({
-#    head(datasetInput(), n = input$obs)
-#  })
+
+
 
 }
+
+
 
 # Create Shiny app ----
 shinyApp(ui, server)
