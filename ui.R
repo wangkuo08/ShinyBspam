@@ -6,25 +6,60 @@ library(readr)
 library(bspam)
 
 
-# Define UI for dataset viewer app ----
+
+
+## Define UI for dataset viewer app ----
 ui <- fluidPage(
   
   navbarPage("bspam Shiny App", theme = shinytheme("lumen"),
              # add welcome tab
-             navbarMenu("Welcome", icon = icon("info-circle"),
+             navbarMenu("Welcome", 
                         tabPanel("Welcome Page", fluid = TRUE,
                                  fluidRow(
                                    column(6,
-                                          h4(p("Welcome to bspam Shiny App!!")),
-                                          h5(p("This is the interactive dasboard for bspam R package to perform data preparation, passage calibration, and WCPM score estimation. For a more detailed information about the bspam package, please ",
+                                          h2(p("Welcome to bspam Shiny App!!")),
+                                          br(),
+                                          h4(p("This is the interactive dashboard for bspam R package. bspam stands for 
+                                               `binomial log-normal speed-accruacy modeling'. Use of this app does not 
+                                               require any knowledge of R. All tasks can be completed interactively by
+                                               followign the direcitons provided under the menus/tabs.")), 
+                                          h4(p("bspam package has 
+                                               functions to fit the speed-accuracy psychometric model for count outcome data 
+                                               (Potgieter, Kamata & Kara, 2017; Kara, Kamata, Potgieter & Nese, 2020), 
+                                               where the accuracy is modeled by a binomial count latent variable model. 
+                                               For example, the use of this modeling technique allows model-based calibration 
+                                               and scoring for oral reading fluency (ORF) assessment data.
+                                               For a more detailed information about the bspam package, please ",
                                                a("click here.",
-                                                 href = "https://github.com/kamataak/bspam"))
-                                          )
+                                                 href = "https://github.com/kamataak/bspam")),
+                                          ),
+                                          h4(p("bspam Shiny App has three main tabs: Data Preparation, Passage Calibration, and Score 
+                                               Estimation.")),
+                                          h3(p("Data Preparation")),
+                                          h4(p("Data preparation allows users to prepare their data for the analyses. For demonstration 
+                                          purposes, data preparation tab provised access to sample datasets available in the bspam 
+                                               package. Users can uplaod their datasets in various formats including `.rds` and `.csv`. 
+                                               Once the data are loaded to the app, the next is assigning the relevant columns to required 
+                                               type of variables for fitting the models. This is done by using the dropdown selection 
+                                               menus. Users can explore their raw and prepared dataets under the relevant view tabs. 
+                                               A descriptivev summary of the prepared dataset is also provided under the Summary Statistics
+                                               tab." 
+                                               )),
+                                          h3(p("Passage Calibration")),
+                                          h4(p("This page has the options for performing passage calibration, namely, estimation of passage
+                                               paramters. User can select the desired options for the estimation. All non-mandatory options
+                                               are pre-selected as the default options as in the relevant bspam function." )), 
+                                          h3(p("Score Estimation")),
+                                          h4(p("This page has the options for performing score estimation, namely, estimation of person
+                                          parameters and model-based scores. User can select the desired options for score estimation. 
+                                          All non-mandatory options are pre-selected as the default options as in the relevant bspam function." )), 
+                                          
+                                          
                                    ))
 
                         ),
 
-                        tabPanel("About", fluid = TRUE,
+                        tabPanel("About", fluid = TRUE, icon = icon("info-circle"),
                                  fluidRow(
                                    column(6,
                                           #br(),
@@ -108,14 +143,16 @@ ui <- fluidPage(
           hr(style = "border-top: 2px solid #D3D3D3;"), 
 
                           # Input: Numeric entry for number of obs to view ----
-                          numericInput(inputId = "obs",
-                                       label = "Number of observations to view:",
-                                       value = 10),
-
+                    #      numericInput(inputId = "obs",
+                    #                   label = "Number of observations to view:",
+                    #                   value = 10),
+       titlePanel("Prepare your data"),
                           actionButton(inputId = "runBtn", label = "Run", icon = icon("gears")),
                           actionButton(inputId = "resetBtn", label = "Reset", styleclass = "warning"),
+       hr(style = "border-top: 2px solid #D3D3D3;"),
+       titlePanel("Save prepared data"),
                           textInput(inputId = "saveas", "Name your dataset"),
-                          downloadButton("downloadData", "Save Prepared Data")
+                          downloadButton("downloadData", "Save")
 #                          actionButton(inputId = "saveBtn", label = "Save", icon = icon("floppy-disk"))
 
 
@@ -134,8 +171,10 @@ ui <- fluidPage(
                             
                             # Output: HTML table with requested number of observations ----
                             tabsetPanel(
-                              tabPanel("Explore", dataTableOutput("view")),
-                              tabPanel("Summary", verbatimTextOutput("summary")) 
+                              tabPanel("View Raw Data", dataTableOutput("raw_data")),
+                              tabPanel("View Prepared Data", dataTableOutput("prep_data")),
+                              tabPanel("Summary Statistics", verbatimTextOutput("summary"))
+                              
                             )
                           )
 
@@ -217,7 +256,7 @@ server <- function(input, output, session) {
   #  docs
  # })
 
-  # Return the requested dataset ----
+  # Using available datasets in bspam
   datasetInput <- reactive({
     switch(input$dataset,
            "none" = NULL,
@@ -236,35 +275,34 @@ server <- function(input, output, session) {
     # updateSelectInput(inputId = "obs.counts", choices = choices_list)
     # updateSelectInput(inputId = "time", choices = choices_list)
 
-    output$summary <- renderPrint({
-
-      if (!is.null(datasetInput())) {
-        output$caption <- renderText({
-          NULL
-        })
-        dataset <- datasetInput()
-        #browser()
-        if (class(dataset)[1] == "fit.model") {
-          dataset %>% summary()
-        } else {
-          summary(dataset)
-        }
-
-      } else {
-          output$caption <- renderText({
-            docs
-          })
-      }
-    })
-   # output$view <- renderDataTable(print(datasetInput()))
-  output$view <- renderDataTable({
-      head(as_tibble(datasetInput()), n = input$obs)
+#   output$summary <- renderPrint({
+#
+#      if (!is.null(datasetInput())) {
+#        output$caption <- renderText({
+#          NULL
+#        })
+#        dataset <- datasetInput()
+#        #browser()
+#        if (class(dataset)[1] == "fit.model") {
+#          dataset %>% summary()
+#        } else {
+#          summary(dataset)
+ #       }
+#
+#      } else {
+#          output$caption <- renderText({
+#            docs
+ #         })
+  #    }
+   # })
+  output$raw_data <- renderDataTable({
+      datasetInput()
     })
 
   })
 
 
-  # upload file
+  # uploading a dataset
   Upload_data <- reactive({
     req(input$upload)
     ext <- tools::file_ext(input$upload$name)
@@ -290,11 +328,11 @@ server <- function(input, output, session) {
     output$caption <- renderText({
       NULL
     })
-    output$summary <- renderPrint({
-      summary(df)
-    })
-    output$view <- renderTable({
-      head(df, n = input$obs)
+    #output$summary <- renderPrint({
+    #  summary(df)
+    #})
+    output$raw_data <- renderDataTable({
+      df
     })
     return (df)
   })
@@ -304,11 +342,11 @@ server <- function(input, output, session) {
     uploaded_data <<- Upload_data()
 
     updateList(Upload_data())
-    output$summary <- renderPrint({
-      summary(Upload_data())
-    })
-    output$view <- renderDataTable({
-      head(Upload_data(), n = input$obs)
+    #output$summary <- renderPrint({
+    #  summary(Upload_data())
+    #})
+    output$raw_data <- renderDataTable({
+      Upload_data()
     })
 
   })
@@ -334,7 +372,7 @@ server <- function(input, output, session) {
     updateSelectInput(session,inputId = "max.counts", selected = character(0))
     updateSelectInput(session,inputId = "obs.counts", selected = character(0))
     updateSelectInput(session,inputId = "time", selected = character(0))
-
+    output$prep_data <- NULL
   })
 
   # run button
@@ -374,10 +412,10 @@ server <- function(input, output, session) {
       saveData <<- small_data
 
       output$summary <- renderPrint({
-        summary(small_data)
+        summary(small_data$data.long %>% select(-person.id, -task.id))
       })
-      output$view <- renderTable({
-        head(small_data$data.long, n = input$obs)
+      output$prep_data <- renderDataTable({
+        small_data$data.long
       })
     } else {
       showModal(modalDialog(
