@@ -6,8 +6,6 @@ library(readr)
 library(bspam)
 
 
-
-
 ## Define UI for dataset viewer app ----
 ui <- fluidPage(
   
