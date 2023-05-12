@@ -4,6 +4,7 @@ library(shinythemes)
 library(tidyverse)
 library(readr)
 library(bspam)
+library(runjags)
 
 ui <- fluidPage(
   navbarPage("bspam Shiny App", theme = shinytheme("lumen"),
@@ -181,6 +182,10 @@ ui <- fluidPage(
              tabPanel("Passage Calibration", fluid = TRUE, icon = icon("ruler"),
                       sidebarLayout(
                         sidebarPanel(width = 3,
+                                     radioButtons(inputId = "est", label = "estimator:", inline = TRUE,
+                                                  c("mcem" = "mcem",
+                                                    "mcmc" = "mcmc")),
+
                                      selectInput("useData", "Use data:",
                                                  c("Default" = "1", "[Upload]" ="2")
                                      ),
@@ -194,6 +199,21 @@ ui <- fluidPage(
                                        uiOutput('resettableInput'),
                                        actionButton(inputId = "getPrepared.Btn", label = "Load data"),
                                      ),
+                                     conditionalPanel(
+                                       condition = "input.est == 'mcmc'",
+                                       hr(style = "border-top: 2px solid #D3D3D3;"),
+                                       selectInput(inputId = "fit.model.person.id",
+                                                   label = "person.id", choices = NULL),
+                                       selectInput(inputId = "fit.model.task.id",
+                                                   label = "task.id", choices = NULL),
+                                       selectInput(inputId = "fit.model.max.counts",
+                                                   label = "max.counts", choices = NULL),
+                                       selectInput(inputId = "fit.model.obs.counts",
+                                                   label = "obs.counts", choices = NULL),
+                                       selectInput(inputId = "fit.model.time",
+                                                   label = "time", choices = NULL)
+                                     ),
+                                     hr(style = "border-top: 2px solid #D3D3D3;"),
                                      selectInput("parSet", "Parameters Setting",
                                                  c("Default" = "1", "[Custom]" ="2")
                                      ),
@@ -204,9 +224,7 @@ ui <- fluidPage(
                                        hr(style = "border-top: 2px solid #D3D3D3;"),
                                        sliderInput(inputId = "k.in", label = "k.in", value = c(5), min = 2, max = 10),
                                        sliderInput(inputId = "rep.in", label = "rep.in", value = c(2), min = 2, max = 100),
-                                       radioButtons(inputId = "est", label = "est", inline = TRUE,
-                                                    c("mcem" = "mcem",
-                                                      "mcmc" = "mcmc")),
+
                                        radioButtons(inputId = "se", label = "se",
                                                     c("none" = "none",
                                                       "analytic" = "analytic",
@@ -508,9 +526,16 @@ server <- function(input, output, session) {
     #   df
     # })
     # return (df[[1]]) for test
-    output$prep.data <- renderDataTable({
-      df[[1]]
-    })
+    # if (input$est == "mcem") {
+    #   output$prep.data <- renderDataTable({
+    #     df[[1]]
+    #   })
+    # } else { # mcmc
+    #   output$prep.data <- renderDataTable({
+    #     df
+    #   })
+    # }
+
 
     updateTabsetPanel(session, "fit.model.Tabset", selected = "Upload.Data")
     return (df)
@@ -521,17 +546,46 @@ server <- function(input, output, session) {
   observeEvent(input$getPrepared.Btn, {
     LoadedPrepared_data <<- load_preparedData()
 
-    output$prep.data <- renderDataTable({
-      load_preparedData()[[1]]
-    })
+    # output$prep.data <- renderDataTable({
+    #   load_preparedData()[[1]]
+    # })
+    if (input$est == "mcem") {
+      output$prep.data <- renderDataTable({
+        load_preparedData()[[1]]
+      })
+    } else { # mcmc
+      output$prep.data <- renderDataTable({
+        load_preparedData()
+      })
+      # get columns list
+      fit.model.updateList(load_preparedData())
+    }
 
   })
+
+  #update list
+  fit.model.updateList <- function(df) {
+    choices_list = colnames(df)
+    updateSelectInput(inputId = "fit.model.person.id", choices = choices_list, selected = character(0))
+    updateSelectInput(inputId = "fit.model.task.id", choices = choices_list, selected = character(0))
+    updateSelectInput(inputId = "fit.model.max.counts", choices = choices_list, selected = character(0))
+    updateSelectInput(inputId = "fit.model.obs.counts", choices = choices_list, selected = character(0))
+    updateSelectInput(inputId = "fit.model.time", choices = choices_list, selected = character(0))
+  }
 
   # fit.model button
   observeEvent(input$fit.model.Btn, {
     #browser()
     # get data
     target.data <- NULL
+
+    # Validate input
+    # will do later
+
+    # validate(
+    #   need(input$in1, 'Check at least one letter!'),
+    #   need(input$in2 != '', 'Please choose a state.')
+    # )
 
     if (input$useData == "1") { # Default to use prepared data
       target.data <- saveData
@@ -574,13 +628,37 @@ server <- function(input, output, session) {
           # Increment the progress bar, and update the detail text.
           incProgress(1/n, detail = "Please wait...")
 
-          if (i > 5) {
+          if (i == 5) {
             if (length(fit.model.result) == 0) {
-              fit.model.result <- fit.model(data=target.data$data.wide,
-                                            person.data = target.data$data.long,
-                                            est = input$est,
-                                            verbose=input$verbose,
-                                            se=input$se)
+              if (input$est == "mcem") { # mcem
+                # showModal(modalDialog( # for debug
+                #   title = "good",
+                #   "mcem",
+                #   easyClose = TRUE
+                # ))
+                fit.model.result <- fit.model(data=target.data$data.wide,
+                                              person.data = target.data$data.long,
+                                              est = input$est,
+                                              verbose=input$verbose,
+                                              se=input$se)
+
+
+              } else {
+                # showModal(modalDialog( # for debug
+                #   title = "good",
+                #  "mcmc",
+                #   easyClose = TRUE
+                # ))
+                #test
+                fit.model.result <- fit.model(person.data=target.data,
+                                              person.id = input$fit.model.person.id,
+                                              task.id = input$fit.model.task.id,
+                                              max.counts = input$fit.model.max.counts,
+                                              obs.counts = input$fit.model.obs.counts,
+                                              time = input$fit.model.time,
+                                              est = "mcmc")
+              }
+
             } else {
               break;
             }
@@ -613,7 +691,7 @@ server <- function(input, output, session) {
       # reset parameters
       updateSliderInput(session, "k.in", value = c(5))
       updateSliderInput(session, "rep.in", value = c(2))
-      updateRadioButtons(session, "est", selected = "mcem")
+      updateRadioButtons(session, "est", selected = input$est) #input$est
       updateRadioButtons(session, "se", selected = "none")
       updateRadioButtons(session, "verbose", selected = FALSE)
       fit.model.result <<- NULL
@@ -622,6 +700,7 @@ server <- function(input, output, session) {
     if (use_set == "1") { # Default data
       # will reset all input
       # reset upload
+      LoadedPrepared_data <- NULL
       output$resettableInput <- renderUI({
 
         fileInput(inputId = "upload.prepared", NULL, multiple = FALSE)
