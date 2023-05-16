@@ -6,6 +6,14 @@ library(readr)
 library(bspam)
 library(runjags)
 
+# check JAGS env
+# This is for running JAGS on M2
+findjags <- findjags()
+if (findjags == "JAGS not found") {
+  # need to set path to find JAGS
+  runjags::runjags.options(jagspath="/hpc/applications/jags/4.3.0/gcc-6.3.0/bin/jags")
+} # end
+
 ui <- fluidPage(
   navbarPage("bspam Shiny App", theme = shinytheme("lumen"),
              navbarMenu("Welcome",
@@ -178,13 +186,13 @@ ui <- fluidPage(
 
                       )
              ),
-             ##########################
+             ############========Fit.Model============##############
              tabPanel("Passage Calibration", fluid = TRUE, icon = icon("ruler"),
                       sidebarLayout(
                         sidebarPanel(width = 3,
                                      radioButtons(inputId = "est", label = "estimator:", inline = TRUE,
                                                   c("mcem" = "mcem",
-                                                    "mcmc" = "mcmc")),
+                                                    "bayes" = "bayes")),
 
                                      selectInput("useData", "Use data:",
                                                  c("Default" = "1", "[Upload]" ="2")
@@ -200,7 +208,7 @@ ui <- fluidPage(
                                        actionButton(inputId = "getPrepared.Btn", label = "Load data"),
                                      ),
                                      conditionalPanel(
-                                       condition = "input.est == 'mcmc'",
+                                       condition = "input.est == 'bayes'",
                                        hr(style = "border-top: 2px solid #D3D3D3;"),
                                        selectInput(inputId = "fit.model.person.id",
                                                    label = "person.id", choices = NULL),
@@ -214,7 +222,7 @@ ui <- fluidPage(
                                                    label = "time", choices = NULL)
                                      ),
                                      hr(style = "border-top: 2px solid #D3D3D3;"),
-                                     selectInput("parSet", "Parameters Setting",
+                                     selectInput("parSet", "Parameters Setting:",
                                                  c("Default" = "1", "[Custom]" ="2")
                                      ),
                                      # Only show this panel if the plot type is a histogram
@@ -222,14 +230,14 @@ ui <- fluidPage(
                                        condition = "input.parSet == '2'",
 
                                        hr(style = "border-top: 2px solid #D3D3D3;"),
-                                       sliderInput(inputId = "k.in", label = "k.in", value = c(5), min = 2, max = 10),
-                                       sliderInput(inputId = "rep.in", label = "rep.in", value = c(2), min = 2, max = 100),
+                                       sliderInput(inputId = "k.in", label = "k.in:", value = c(5), min = 2, max = 10),
+                                       sliderInput(inputId = "rep.in", label = "rep.in:", value = c(2), min = 2, max = 100),
 
-                                       radioButtons(inputId = "se", label = "se",
+                                       radioButtons(inputId = "se", label = "se:",
                                                     c("none" = "none",
                                                       "analytic" = "analytic",
                                                       "bootstrap" = "bootstrap")),
-                                       radioButtons(inputId = "verbose", label = "verbose", inline = TRUE,
+                                       radioButtons(inputId = "verbose", label = "verbose:", inline = TRUE,
                                                     c("False" = FALSE,
                                                       "True" = TRUE))
 
@@ -237,7 +245,7 @@ ui <- fluidPage(
                                      actionButton(inputId = "fit.model.Btn", label = "fit.model"),
                                      hr(style = "border-top: 2px solid #D3D3D3;"),
                                      titlePanel("Save fit.model data"),
-                                     textInput(inputId = "save.fit.model.as", "Name your dataset"),
+                                     textInput(inputId = "save.fit.model.as", "Name your dataset:"),
                                      downloadButton("download.fit.model.data", "Save")
 
                         ),
@@ -250,49 +258,106 @@ ui <- fluidPage(
                           )
                         )
                       ) # end sidebarLayout
-             ), # end tabPanel("Passage Calibration")
+             ), # end tabPanel("Passage Calibration"
 
-             # For score function
+             ############======== score function ============##############
              tabPanel("Score Estimation", fluid = TRUE, icon = icon("chart-bar"),
-                      #tags$style(button_color_css),
-                      # Sidebar layout with a input and output definitions
                       sidebarLayout(
-                        sidebarPanel(
-                          # App title ----
-                          titlePanel("Set Parameters"),
+                        sidebarPanel(width = 3,
+                                     radioButtons(inputId = "scoreEst", label = "estimator:", inline = FALSE,
+                                                  c("mle" = "mle",
+                                                    "map" = "map",
+                                                    "eap" = "eap",
+                                                    "bayes" = "bayes")),
 
-                          # Input: Selector for choosing functions ----
-                          selectInput(inputId = "selected_func_name",
-                                      label = "Choose a function:",
-                                      choices = c("fit.model", "scoring", "prep")),
+                                     selectInput("scoreUseData", "Use data:",
+                                                 c("Default" = "1", "[Upload]" ="2")
+                                     ),
+                                     conditionalPanel(
+                                       condition = "input.scoreUseData == '2'",
 
-                          # Copy the line below to make a checkbox
-                          checkboxInput("checkbox", label = "Choice A", value = TRUE),
+                                       hr(style = "border-top: 2px solid #D3D3D3;"),
+                                       # load data
+                                       #fileInput(inputId = "upload.prepared", NULL, multiple = FALSE),
+                                       # try UI
+                                       uiOutput('score.resettableInput'),
+                                       actionButton(inputId = "score.getPrepared.Btn", label = "Load data"),
+                                     ),
+                                     conditionalPanel(
+                                       condition = "input.scoreEst == 'bayes'",
+                                       hr(style = "border-top: 2px solid #D3D3D3;"),
+                                       selectInput(inputId = "score.person.id",
+                                                   label = "person.id", choices = NULL),
+                                       selectInput(inputId = "score..task.id",
+                                                   label = "task.id", choices = NULL),
+                                       selectInput(inputId = "score.max.counts",
+                                                   label = "max.counts", choices = NULL),
+                                       selectInput(inputId = "score.obs.counts",
+                                                   label = "obs.counts", choices = NULL),
+                                       selectInput(inputId = "score.time",
+                                                   label = "time", choices = NULL)
+                                     ),
+                                     hr(style = "border-top: 2px solid #D3D3D3;"),
+                                     selectInput("scoreParSet", "Parameters Setting:",
+                                                 c("Default" = "1", "[Custom]" ="2")
+                                     ),
+                                     # Only show this panel if the plot type is a histogram
+                                     conditionalPanel(
+                                       condition = "input.scoreParSet == '2'",
 
-                          # Input: Numeric entry for number of obs to view ----
-                          numericInput(inputId = "obs",
-                                       label = "Number of observations to view:",
-                                       value = 10)
+                                       hr(style = "border-top: 2px solid #D3D3D3;"),
+                                       sliderInput(inputId = "score.failsafe", label = "failsafe:", value = c(0), min = 0, max = 50),
+                                       sliderInput(inputId = "score.bootstrap", label = "bootstrp:", value = c(100), min = 50, max = 500),
 
+                                       radioButtons(inputId = "score.se", label = "se:",
+                                                    c("analytic" = "analytic",
+                                                      "bootstrap" = "bootstrap"), inline = TRUE),
+                                       textInput(inputId = "score.external", label = "external:", value = ""),
+                                       radioButtons(inputId = "score.type", label = "type:",
+                                                    c("general" = "general",
+                                                      "orf" = "orf"), inline = TRUE),
+
+                                     ),
+                                     radioButtons(inputId = "scoreCases", label = "cases:",
+                                                  c("default" = "default",
+                                                    "input" = "input",
+                                                    "upload" = "upload"), inline = TRUE, selected = "input"),
+                                     conditionalPanel(
+                                       condition = "input.scoreCases == 'input'",
+                                       textInput(inputId = "input.score.cases", label = "input cases:", value = ""),
+                                     ),
+                                     conditionalPanel(
+                                       condition = "input.scoreCases == 'upload'",
+                                       fileInput(inputId = "upload.score.cases", NULL, multiple = FALSE)
+                                     ),
+
+                                     actionButton(inputId = "score.Btn", label = "scoring"),
+                                     hr(style = "border-top: 2px solid #D3D3D3;"),
+                                     titlePanel("Save score data"),
+                                     textInput(inputId = "save.score.as", "Name your dataset:"),
+                                     downloadButton("download.score.data", "Save")
                         ),
-
-                        # Main panel for displaying outputs ----
                         mainPanel(
+                          tabsetPanel(id = "score.Tabset",
+                                      #tabPanel("View Raw Data", dataTableOutput("raw_data")),
+                                      tabPanel("score.Upload.Data", dataTableOutput("score.prep.data")),
+                                      tabPanel("score.summary", verbatimTextOutput("score.summary"))
 
+                          )
                         )
-
-                      )
-             ),
+                      ) # end sidebarLayout
+             ), # end tabPanel("Score Estimation"
 
   ))
 
 server <- function(input, output, session) {
   # Define variables
-  saveData <- NULL
-  uploaded_data <- NULL
-  fit.model.result <- NULL
-  LoadedPrepared_data <- NULL
-
+  saveData <- NULL # prepared data
+  uploaded_data <- NULL # uploaded data
+  fit.model.result <- NULL # fit.model data
+  LoadedPrepared_data <- NULL # Loaded prepared data
+  score.result <- NULL # score estimation
+  fit.saved <- NULL # saved fit data for scoring
 
   # docs <- "Guidence for Preparing data..."
 
@@ -499,7 +564,7 @@ server <- function(input, output, session) {
   }
 
 
-  ######===================action for passage calibration==================
+  ######=================== action for passage calibration ==================
 
   # load data
   load_preparedData <- reactive({
@@ -530,7 +595,7 @@ server <- function(input, output, session) {
     #   output$prep.data <- renderDataTable({
     #     df[[1]]
     #   })
-    # } else { # mcmc
+    # } else { # bayes
     #   output$prep.data <- renderDataTable({
     #     df
     #   })
@@ -553,7 +618,7 @@ server <- function(input, output, session) {
       output$prep.data <- renderDataTable({
         load_preparedData()[[1]]
       })
-    } else { # mcmc
+    } else { # bayes
       output$prep.data <- renderDataTable({
         load_preparedData()
       })
@@ -578,6 +643,7 @@ server <- function(input, output, session) {
     #browser()
     # get data
     target.data <- NULL
+    # fit.model.result <- NULL # test
 
     # Validate input
     # will do later
@@ -646,7 +712,7 @@ server <- function(input, output, session) {
               } else {
                 # showModal(modalDialog( # for debug
                 #   title = "good",
-                #  "mcmc",
+                #  "bayes",
                 #   easyClose = TRUE
                 # ))
                 #test
@@ -656,9 +722,10 @@ server <- function(input, output, session) {
                                               max.counts = input$fit.model.max.counts,
                                               obs.counts = input$fit.model.obs.counts,
                                               time = input$fit.model.time,
-                                              est = "mcmc")
+                                              est = "bayes")
               }
 
+              fit.saved <<- fit.model.result
             } else {
               break;
             }
@@ -674,7 +741,7 @@ server <- function(input, output, session) {
     }
   }) # end  observeEvent(input$fit.model.Btn
 
-  output$resettableInput <- renderUI({
+  output$score.resettableInput <- renderUI({
 
     fileInput(inputId = "upload.prepared", NULL, multiple = FALSE)
   })
@@ -723,6 +790,123 @@ server <- function(input, output, session) {
       saveRDS(fit.model.result, file)
     }
   )
+
+
+  ######=================== action for score estimating ==================
+  output$score.resettableInput <- renderUI({
+
+    fileInput(inputId = "score.upload.prepared", NULL, multiple = TRUE)
+  })
+
+  # fit.model button
+  observeEvent(input$score.Btn, {
+    #browser()
+    # get data
+    calib.data <- NULL
+    person.data <- NULL
+
+
+    if (input$scoreUseData == "1") { # Default to use prepared and fit.model data
+      if (length(fit.saved) == 0) {
+        showModal(modalDialog(
+          title = "Error",
+          "Please run fit.model first!",
+          easyClose = TRUE
+        ))
+      }
+      calib.data <- fit.saved
+      person.data <- LoadedPrepared_data
+    } else { # use uploaded prepared data
+      showModal(modalDialog( # for debug
+        title = "good",
+        "here",
+        easyClose = TRUE
+      ))
+
+      #target.data <- LoadedPrepared_data
+    }
+
+    if (length(person.data) == 0) {
+      showModal(modalDialog(
+        title = "Error",
+        "Please prepared your data first!",
+        easyClose = TRUE
+      ))
+      return()
+    } else {
+
+      # update tabletpanel
+      updateTabsetPanel(session, "score.Tabset", selected = "score.summary")
+
+      output$score.summary <- renderText({ "" })
+
+      score.result <- NULL
+
+      # #Create 0-row data frame which will be used to store data
+      dat <- data.frame(x = numeric(0), y = numeric(0))
+
+      withProgress(message = 'Running score estimating...', value = 0, {
+
+        #   # Number of times we'll go through the loop
+        n <- 10
+        #
+        for (i in 1:n) {
+
+          # Increment the progress bar, and update the detail text.
+          incProgress(1/n, detail = "Please wait...")
+
+          if (i == 5) {
+            if (length(score.result) == 0) {
+              if (input$scoreEst == "bayes") { # bayes
+                # showModal(modalDialog( # for debug
+                #   title = "good",
+                #   "mcem",
+                #   easyClose = TRUE
+                # ))
+                score.result <- scoring(calib.data=calib.data,
+                                              person.data = person.data$data.long,
+                                              est = input$scoreEst,
+                                              failsafe = input$score.failsafe,
+                                              bootstrap = input$score.bootstrap,
+                                              se=input$score.se,
+                                              type = input$score.type
+
+                                        )
+
+
+              } else { # the others
+                showModal(modalDialog( # for debug
+                  title = "good",
+                  input$scoreEst,
+                  easyClose = TRUE
+                ))
+                #test
+                  score.result <- scoring(calib.data=calib.data,
+                                          person.data = person.data$data.long,
+                                          est = input$scoreEst,
+                                          failsafe = input$score.failsafe,
+                                          bootstrap = input$score.bootstrap,
+                                          se=input$score.se,
+                                          type = input$score.type
+
+                  )
+              }
+
+            } else {
+              break;
+            }
+          }
+
+        }
+      })
+
+      output$score.summary <- renderPrint({
+        score.result %>% summary()
+      })
+
+    }
+  }) # end observeEvent(input$score.Btn
+
 
 }
 shinyApp(ui = ui, server = server)
