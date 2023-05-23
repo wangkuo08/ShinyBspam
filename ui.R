@@ -96,7 +96,7 @@ ui <- fluidPage(
                                      # Input: Selector for choosing dataset ----
                                      selectInput(inputId = "dataset",
                                                  label = HTML("<b> Select </b>"),
-                                                 choices = c("none","passage")),
+                                                 choices = c("none","passage2")),
                                      # selectizeInput(
                                      #   'dataset', 'Dataset',
                                      #   choices = c("passage"),
@@ -358,6 +358,8 @@ server <- function(input, output, session) {
   LoadedPrepared_data <- NULL # Loaded prepared data
   score.result <- NULL # score estimation
   fit.saved <- NULL # saved fit data for scoring
+  score.loadedPrepared_data <- NULL # Loaded prepared data for scoring
+  score.saved <- NULL # saved scoring data
 
   # docs <- "Guidence for Preparing data..."
 
@@ -369,7 +371,7 @@ server <- function(input, output, session) {
   datasetInput <- reactive({
     switch(input$dataset,
            "none" = NULL,
-           "passage" = passage)
+           "passage2" = passage2)
   })
 
   # get data set columns name
@@ -727,7 +729,7 @@ server <- function(input, output, session) {
 
               fit.saved <<- fit.model.result
             } else {
-              break;
+              break
             }
           }
 
@@ -787,7 +789,7 @@ server <- function(input, output, session) {
       paste(input$save.fit.model.as, ".rds", sep = "")
     },
     content = function(file) {
-      saveRDS(fit.model.result, file)
+      saveRDS(fit.saved, file)
     }
   )
 
@@ -795,40 +797,84 @@ server <- function(input, output, session) {
   ######=================== action for score estimating ==================
   output$score.resettableInput <- renderUI({
 
-    fileInput(inputId = "score.upload.prepared", NULL, multiple = TRUE)
+    fileInput(inputId = "score.upload.prepared", NULL, multiple = FALSE)
   })
 
-  # fit.model button
+  # load data
+  score.load_preparedData <- reactive({
+    req(input$score.upload.prepared)
+    ext <- tools::file_ext(input$score.upload.prepared$name)
+    if (ext == "csv") {
+      df <- read.csv(input$score.upload.prepared$datapath, header=TRUE)
+    } else if (ext == "tsv") {
+      df <- vroom::vroom(input$score.upload.prepared$datapath, delim = "\t")
+    } else if (ext == "rds") {
+      df <- readRDS(input$score.upload.prepared$datapath)
+    } else if (ext == "rda" | ext == "RData" | ext == "rdata") {
+      tf <- load(file=input$score.upload.prepared$datapath)
+      df <- get(tf)
+      rm(tf) # delete temp data
+    } else {
+      validate("Invalid file; Please upload a file with correct extension name")
+    }
+
+    #reset summary area
+    output$fit.model.summary <- renderText({ "" })
+
+    updateTabsetPanel(session, "score.Tabset", selected = "score.prep.data")
+    return (df)
+
+  })
+
+  # load data button
+  observeEvent(input$score.getPrepared.Btn, {
+      score.loadedPrepared_data <<- score.load_preparedData()
+
+      output$score.prep.data <- renderDataTable({
+        score.load_preparedData()[[1]]
+      })
+      # get columns list
+  })  #end observe
+
+  # scoring button
   observeEvent(input$score.Btn, {
     #browser()
     # get data
     calib.data <- NULL
     person.data <- NULL
 
+    # showModal(modalDialog(
+    #   title = "Default",
+    #   print(input$scoreUseData),
+    #   easyClose = TRUE
+    # ))
 
     if (input$scoreUseData == "1") { # Default to use prepared and fit.model data
-      if (length(fit.saved) == 0) {
-        showModal(modalDialog(
-          title = "Error",
-          "Please run fit.model first!",
-          easyClose = TRUE
-        ))
-      }
       calib.data <- fit.saved
-      person.data <- LoadedPrepared_data
-    } else { # use uploaded prepared data
-      showModal(modalDialog( # for debug
-        title = "good",
-        "here",
-        easyClose = TRUE
-      ))
+      if (class(LoadedPrepared_data)[[1]] == "list") { # PREPARED DATA
+        person.data <- LoadedPrepared_data[[1]]
+        # showModal(modalDialog(
+        #   title = "Default",
+        #   print(input$scoreUseData),
+        #   easyClose = FALSE
+        # ))
+      } else {
+        person.data <- LoadedPrepared_data
+        # showModal(modalDialog(
+        #   title = input$scoreUseData,
+        #   print(person.data),
+        #   easyClose = TRUE
+        # ))
+      }
 
-      #target.data <- LoadedPrepared_data
+    } else { # use uploaded prepared data
+      calib.data <- fit.saved
+      person.data <- score.loadedPrepared_data
     }
 
     if (length(person.data) == 0) {
       showModal(modalDialog(
-        title = "Error",
+        title = "Error-scoring",
         "Please prepared your data first!",
         easyClose = TRUE
       ))
@@ -864,7 +910,7 @@ server <- function(input, output, session) {
                 #   easyClose = TRUE
                 # ))
                 score.result <- scoring(calib.data=calib.data,
-                                              person.data = person.data$data.long,
+                                              person.data = person.data, # person.data$data.long,
                                               est = input$scoreEst,
                                               failsafe = input$score.failsafe,
                                               bootstrap = input$score.bootstrap,
@@ -872,7 +918,6 @@ server <- function(input, output, session) {
                                               type = input$score.type
 
                                         )
-
 
               } else { # the others
                 showModal(modalDialog( # for debug
@@ -882,7 +927,7 @@ server <- function(input, output, session) {
                 ))
                 #test
                   score.result <- scoring(calib.data=calib.data,
-                                          person.data = person.data$data.long,
+                                          person.data = person.data, # person.data$data.long,
                                           est = input$scoreEst,
                                           failsafe = input$score.failsafe,
                                           bootstrap = input$score.bootstrap,
@@ -891,9 +936,9 @@ server <- function(input, output, session) {
 
                   )
               }
-
+              score.saved <<- score.result
             } else {
-              break;
+              break
             }
           }
 
@@ -907,6 +952,15 @@ server <- function(input, output, session) {
     }
   }) # end observeEvent(input$score.Btn
 
+  # save scoring result
+  output$download.score.data <- downloadHandler(
+    filename = function() {
+      paste(input$save.score.as, ".rds", sep = "")
+    },
+    content = function(file) {
+      saveRDS(score.saved, file)
+    }
+  )
 
 }
 shinyApp(ui = ui, server = server)
