@@ -69,7 +69,7 @@ ui <- fluidPage(
                                           h4(p("About the Project")),
                                           h5(p("Refer to bspam page????")),
                                           br(),
-                                          h5(p("add more text!")),
+                                          h5(p("The research reported here was supported by the Institute of Education Sciences, U.S. Department of Education, through Grant R305A140203 to the University of Oregon. The opinions expressed are those of the authors and do not represent views of the Institute or the U.S. Department of Education.")),
                                           br(),
                                           h5(p("and more here!"),
                                              p("The source code for this Shiny app is available ", a("on github", href = "add link to here!"), "."))
@@ -920,11 +920,11 @@ server <- function(input, output, session) {
                                         )
 
               } else { # the others
-                showModal(modalDialog( # for debug
-                  title = "good",
-                  input$scoreEst,
-                  easyClose = TRUE
-                ))
+                # showModal(modalDialog( # for debug
+                #   title = "good",
+                #   input$scoreEst,
+                #   easyClose = TRUE
+                # ))
                 #test
                   score.result <- scoring(calib.data=calib.data,
                                           person.data = person.data, # person.data$data.long,
