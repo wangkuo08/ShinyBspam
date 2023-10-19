@@ -9,11 +9,11 @@ library(runjags)
 
 # check JAGS env
 # This is for running JAGS on M2
-findjags <- findjags()
-if (findjags == "JAGS not found") {
-  # need to set path to find JAGS
-  runjags::runjags.options(jagspath="/hpc/applications/jags/4.3.0/gcc-6.3.0/bin/jags")
-} # end
+# findjags <- findjags()
+# if (findjags == "JAGS not found") {
+#   # need to set path to find JAGS
+#   runjags::runjags.options(jagspath="/hpc/applications/jags/4.3.0/gcc-6.3.0/bin/jags")
+# } # end
 
 
 ############################################################################################################
@@ -558,11 +558,8 @@ server <- function(input, output, session) {
   
   # fit reset button
   observeEvent(input$fit.resetBtn, {
-    # showModal(modalDialog( # for debug
-    #   title = "fit.reset_check",
-    #   input$fit_dat,
-    #   easyClose = TRUE
-    # ))
+    
+    updateRadioButtons(session, "fit_dat", selected = "yes")
     
     updateSliderInput(session,inputId = "k.in", value = c(5))
     updateSliderInput(session,inputId = "rep.in", value = c(2))
@@ -573,6 +570,13 @@ server <- function(input, output, session) {
     updateRadioButtons(session, "se", selected = "none")
     updateRadioButtons(session, "verbose", selected = FALSE)
     
+    # reset output area
+    output$prep.data <- renderDataTable({
+      NULL
+    })
+    output$fit.modle.summary <- renderDataTable({
+      NULL
+    })    
   })
   
   # run button
@@ -764,6 +768,10 @@ server <- function(input, output, session) {
       ))
       return()
     } else {
+      
+      # print selected arguments
+      print(paste("Fit.Model Arguments:", input$est,input$k.in,
+                  input$rep.in,input$se,input$verbose))
       
       # update tabletpanel
       updateTabsetPanel(session, "fit.model.Tabset", selected = "fit.model.summary")
@@ -990,6 +998,11 @@ server <- function(input, output, session) {
   observeEvent(input$caseload.Btn, {
     score.loaded.case.Data <<- score.load.case.data()
     print(score.loaded.case.Data)
+    showModal(modalDialog(
+      title = "Load Case",
+      print(paste("Loaded cases:",toString(score.loaded.case.Data[[1]]))),
+      easyClose = FALSE
+    ))
   })  #end load case data
 
   
@@ -1033,8 +1046,8 @@ server <- function(input, output, session) {
       return()
     } else {
       # external option
-      if (input$scoreExtOption == "yes") {
-        external.option <- c(input$score.external)
+      if (input$scoreExtOption == "yes" & length(input$score.external) != 0) {
+        external.option <- c(strsplit(input$score.external, split=","))[[1]] #c(input$score.external)
       }
       
       #  get case
@@ -1064,9 +1077,9 @@ server <- function(input, output, session) {
       }
       
       # print selected arguments
-      print(paste("Arguments:", input$scoreEst,input$score.failsafe,
+      print(paste("Scoring Arguments:", input$scoreEst,input$score.failsafe,
                   input$score.bootstrap,input$scoreSe,input$score.type, 
-                  dinput$scoreCases, "external=", input$scoreExtOption))
+                  input$scoreCases, "external=", input$scoreExtOption))
       
       # update tabletpanel
       updateTabsetPanel(session, "score.Tabset", selected = "score.summary")
@@ -1148,6 +1161,11 @@ server <- function(input, output, session) {
   
   # score reset button 
   observeEvent(input$score.resetBtn, {
+    # reset data area
+    
+    updateRadioButtons(session, "calibUseData", selected = "1") 
+    updateRadioButtons(session, "scoreUseData", selected = "1") 
+    
     updateRadioButtons(session, "scoreEst", selected = "bayes") 
     updateSelectInput(session, inputId = "scoreParSet", selected = "1")
     updateRadioButtons(session, "scoreExtOption", selected = "no") 
@@ -1155,6 +1173,17 @@ server <- function(input, output, session) {
     updateSliderInput(session,inputId = "score.failsafe", value = c(0))
     updateSliderInput(session,inputId = "score.bootstrap", value = c(100))
     updateRadioButtons(session, "scoreCases", selected = "default")    
+    
+    # reset output area
+    output$calib.data <- renderDataTable({
+      NULL
+    })
+    output$score.prep.data <- renderDataTable({
+      NULL
+    })
+    output$score.summary <- renderDataTable({
+      NULL
+    })
     
   })
   
