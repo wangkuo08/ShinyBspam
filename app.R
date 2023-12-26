@@ -449,8 +449,9 @@ ui <- fluidPage(
                                       # tabPanel("score.summary", verbatimTextOutput("score.summary"))
                                       tabPanel("View Calibration Data", verbatimTextOutput("calib.data")),
                                       tabPanel("View Uploaded Person Data", dataTableOutput("score.prep.data")),
-                                      # tabPanel("View Scoring Summary", verbatimTextOutput("score.summary"))
-                                      tabPanel("View Scoring Summary", verbatimTextOutput("score.summary"))                                     
+                                      # try dataTable
+                                      tabPanel("View Scoring Summary", dataTableOutput("score.summary"))
+                                      # tabPanel("View Scoring Summary", verbatimTextOutput("score.summary"))                                     
                           )
                         )
                       ) # end sidebarLayout
@@ -1173,14 +1174,23 @@ server <- function(input, output, session) {
         }
       })
       
-      output$score.summary <- renderPrint({
+      # output$score.summary <- renderPrint({
+      #   if (class(score.result)[1] != "scoring") { # for bootstrap
+      #     score.result %>% summary()
+      #   } else {
+      #     score.result %>% summary(show = "short")
+      #   }
+      # })
+      
+      # try dataTable
+      output$score.summary <- renderDataTable({
         if (class(score.result)[1] != "scoring") { # for bootstrap
-          score.result %>% summary()
+          as.data.frame(score.result %>% summary())
         } else {
-          score.result %>% summary(show = "short")
+          as.data.frame(score.result %>% summary(show = "short"))
         }
       })
-      
+
     }
   }) # end observeEvent(input$score.Btn
   
