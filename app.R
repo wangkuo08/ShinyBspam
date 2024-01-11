@@ -1187,7 +1187,14 @@ server <- function(input, output, session) {
         if (class(score.result)[1] != "scoring") { # for bootstrap
           as.data.frame(score.result %>% summary())
         } else {
-          as.data.frame(score.result %>% summary(show = "short"))
+          # need to format output
+          # as.data.frame(score.result %>% summary(show = "short"))
+          temp.result <- as.data.frame(score.result %>% summary(show = "short"))
+          max_col <- dim(temp.result)[2] # the number of columns                             
+          result <- cbind(temp.result[,1],as.data.frame(lapply(temp.result[,2:max_col],
+                                  sprintf, fmt = "%6.3f"))) 
+          colnames(result) <- colnames(temp.result)
+          result
         }
       })
 
