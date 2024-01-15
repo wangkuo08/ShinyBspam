@@ -293,13 +293,13 @@ ui <- fluidPage(
                                                                  "True" = TRUE))
                                                   
                                                 ),
-                                                actionButton(inputId = "fit.model.Btn", label = "fit.model"),
+                                                actionButton(inputId = "fit.model.Btn", label = "RUN MODEL FITTING"),
                                                 actionButton(inputId = "fit.resetBtn", label = "Reset", styleclass = "warning")
                                               ),
                                               
                                               # hr(style = "border-top: 2px solid #D3D3D3;"),
                                               wellPanel(
-                                                h4(HTML("<b> Save fit.model data </b>")),
+                                                h4(HTML("<b> Save Model Fitting (Calibration) Data </b>")),
                                                 textInput(inputId = "save.fit.model.as", "Enter file name below"),
                                                 downloadButton("download.fit.model.data", "Save"))
                                               
@@ -334,7 +334,7 @@ ui <- fluidPage(
                                                 
                                                 conditionalPanel(condition = "input.calibUseData == '2'", 
                                                                  uiOutput('score.calib.resettableInput'),
-                                                                 actionButton(inputId = "calib_load.Btn", label = "Load data"),
+                                                                 actionButton(inputId = "calib_load.Btn", label = "Load Calibration data"),
                                                                  
                                                 )),
 
@@ -351,7 +351,7 @@ ui <- fluidPage(
                                                 conditionalPanel(
                                                   condition = "input.scoreUseData == '2'",
                                                   uiOutput('score.person.resettableInput'),
-                                                  actionButton(inputId = "score.getPrepared.Btn", label = "Load data"),
+                                                  actionButton(inputId = "score.getPrepared.Btn", label = "Load Person data"),
                                                 )),
                                               
                                               wellPanel(
@@ -478,6 +478,7 @@ server <- function(input, output, session) {
   fit.saved <- NULL # saved fit data for scoring
   score.loadedPrepared_data <- NULL # Loaded prepared data for scoring
   score.saved <- NULL # saved scoring data
+  score.loaded.external.Data <- NULL # loaded external
   
   # docs <- "Guidence for Preparing data..."
   
@@ -819,7 +820,7 @@ server <- function(input, output, session) {
       # #Create 0-row data frame which will be used to store data
       dat <- data.frame(x = numeric(0), y = numeric(0))
       
-      withProgress(message = 'Running fit.model...', value = 0, {
+      withProgress(message = 'Running Model Fitting.', value = 0, {
         
         #   # Number of times we'll go through the loop
         n <- 10
@@ -827,7 +828,7 @@ server <- function(input, output, session) {
         for (i in 1:n) {
           
           # Increment the progress bar, and update the detail text.
-          incProgress(1/n, detail = "Please wait...")
+          incProgress(1/n, detail = "Please Wait...")
           
           if (i == 5) {
             if (length(fit.model.result) == 0) {
@@ -1117,6 +1118,7 @@ server <- function(input, output, session) {
       ))
       return()
     } else {
+    
       # external option
       if (input$scoreExtOption == "yes" & length(input$score.external) != 0) {
         external.option <- c(strsplit(input$score.external, split=","))[[1]] #c(input$score.external)
@@ -1126,7 +1128,7 @@ server <- function(input, output, session) {
         print("upload.external")
         external.option <- score.loaded.external.Data[[1]]
       }
-      
+
       #  get case
       if (input$scoreCases == "default") { # without case data
         print("without case")
@@ -1168,7 +1170,7 @@ server <- function(input, output, session) {
       # #Create 0-row data frame which will be used to store data
       dat <- data.frame(x = numeric(0), y = numeric(0))
       
-      withProgress(message = 'Running score estimating...', value = 0, {
+      withProgress(message = 'Running Score Estimating.', value = 0, {
         
         #   # Number of times we'll go through the loop
         n <- 10
@@ -1176,7 +1178,7 @@ server <- function(input, output, session) {
         for (i in 1:n) {
           
           # Increment the progress bar, and update the detail text.
-          incProgress(1/n, detail = "Please wait...")
+          incProgress(1/n, detail = "Please Wait...")
           
           if (i == 5) {
             if (length(score.result) == 0) {
@@ -1225,18 +1227,25 @@ server <- function(input, output, session) {
       
       # try dataTable
       output$score.summary <- renderDataTable({
-        if (class(score.result)[1] != "scoring") { # for bootstrap
-          as.data.frame(score.result %>% summary())
-        } else {
-          # need to format output
-          # as.data.frame(score.result %>% summary(show = "short"))
-          temp.result <- as.data.frame(score.result %>% summary(show = "short"))
-          max_col <- dim(temp.result)[2] # the number of columns                             
-          result <- cbind(temp.result[,1],as.data.frame(lapply(temp.result[,2:max_col],
-                                  sprintf, fmt = "%6.3f"))) 
-          colnames(result) <- colnames(temp.result)
-          result
+        if (length(score.result)[[1]] != 0) {
+          if (class(score.result)[1] != "scoring") { # for bootstrap
+            temp.result <- as.data.frame(score.result %>% summary())
+            max_col <- dim(temp.result)[2] # the number of columns                             
+            result <- cbind(temp.result[,1:6],as.data.frame(lapply(temp.result[,7:max_col],
+                                                                 sprintf, fmt = "%6.3f"))) 
+            colnames(result) <- colnames(temp.result)
+            result
+          } else {
+            temp.result <- as.data.frame(score.result %>% summary(show = "short"))  
+            max_col <- dim(temp.result)[2] # the number of columns                             
+            result <- cbind(temp.result[,1],as.data.frame(lapply(temp.result[,2:max_col],
+                                                                 sprintf, fmt = "%6.3f"))) 
+            colnames(result) <- colnames(temp.result)
+            result
+          }
+
         }
+
       })
 
     }
