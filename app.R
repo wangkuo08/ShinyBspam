@@ -399,13 +399,18 @@ ui <- fluidPage(
                                                         radioButtons(inputId = "scoreExtOption", 
                                                                      label = "Perform External Scoring",
                                                                       choices = c("no" = "no",
-                                                                                  "yes" = "yes"), inline = TRUE, selected = "no"),
+                                                                                  "yes" = "yes",
+                                                                                  "upload" = "upload"), inline = TRUE, selected = "no"),
                                                         
                                                         conditionalPanel(condition = "input.scoreExtOption == 'yes'",
                                                                          textInput(inputId = "score.external", 
                                                                                    label = "Scoring based on external option", 
                                                                                    value = "")),
-                                                        
+                                                        conditionalPanel(
+                                                          condition = "input.scoreExtOption == 'upload'",
+                                                          fileInput(inputId = "score.upload.external", NULL, multiple = FALSE),
+                                                          actionButton(inputId = "externalload.Btn", label = "Load external"),
+                                                        ),
                                                         radioButtons(inputId = "score.type", label = "Output Type",
                                                                      c("general" = "general",
                                                                        "orf" = "orf"), inline = TRUE),
@@ -1034,7 +1039,38 @@ server <- function(input, output, session) {
       easyClose = FALSE
     ))
   })  #end load case data
-
+  
+  # load external
+  score.load.external.data <- reactive({
+    req(input$score.upload.external)
+    ext <- tools::file_ext(input$score.upload.external$name)
+    if (ext == "csv") {
+      df <- read.csv(input$score.upload.external$datapath, header=TRUE, sep = ",") 
+    } else if (ext == "tsv") {
+      df <- vroom::vroom(input$score.upload.external$datapath, delim = "\t")
+    } else if (ext == "rds") {
+      df <- readRDS(input$score.upload.external$datapath)
+    } else if (ext == "rda" | ext == "RData" | ext == "rdata") {
+      tf <- load(file=input$score.upload.external$datapath)
+      df <- get(tf)
+      rm(tf) # delete temp data
+    } else {
+      validate("Invalid file; Please upload a file with correct extension name")
+    }
+    
+    return (df)
+    
+  })
+  # load external button
+  observeEvent(input$externalload.Btn, {
+    score.loaded.external.Data <<- score.load.external.data()
+    print(score.loaded.external.Data)
+    showModal(modalDialog(
+      title = "Load External",
+      print(paste("Loaded externals:",toString(score.loaded.external.Data[[1]]))),
+      easyClose = TRUE
+    ))
+  })  #end load external
   
   # scoring button
   observeEvent(input$score.Btn, {
@@ -1084,6 +1120,11 @@ server <- function(input, output, session) {
       # external option
       if (input$scoreExtOption == "yes" & length(input$score.external) != 0) {
         external.option <- c(strsplit(input$score.external, split=","))[[1]] #c(input$score.external)
+      }
+      # if uploaded
+      if (input$scoreExtOption == "upload" & length(score.loaded.external.Data[[1]]) != 0) {
+        print("upload.external")
+        external.option <- score.loaded.external.Data[[1]]
       }
       
       #  get case
