@@ -4,6 +4,7 @@ library(shinythemes)
 library(tidyverse)
 library(readr)
 library(bspam)
+library(plotly)
 #library(runjags)
 #library(shinyWidgets)
 
@@ -54,9 +55,9 @@ ui <- fluidPage(
                                           h2(p("Welcome to bspam Shiny App!!")),
                                           br(),
                                           h4(p("This is the interactive dashboard for bspam R package. bspam stands for
-                                               `binomial log-normal speed-accruacy modeling'. Use of this app does not
+                                               `binomial log-normal speed-accuracy modeling.' Use of this app does not
                                                require any knowledge of R. All tasks can be completed interactively by
-                                               following the direcitons provided under the menus/tabs.")),
+                                               following the directions provided under the menus/tabs.")),
                                           h4(p("bspam package has
                                                functions to fit the speed-accuracy psychometric model for count outcome data
                                                (Potgieter, Kamata & Kara, 2017; Kara, Kamata, Potgieter & Nese, 2020),
@@ -69,8 +70,8 @@ ui <- fluidPage(
                                           h3(p("Data Preparation")),
                                           h4(p("Data preparation allows users to prepare their data for the analyses. For demonstration
                                           purposes, data preparation tab provides access to several datasets available in the bspam
-                                               package. Users can uplaod their datasets in various formats including `.rds` (R data serialization) and 
-                                               `.csv (comma-separated values)`.
+                                               package. Users can upload their datasets in various formats, including `rds` (R data serialization) and 
+                                               `csv (comma-separated values)`.
                                                Once the data are loaded to the app, the next step is assigning the relevant columns to required
                                                type of variables for fitting the model. This is done by using the dropdown selection
                                                menus. Users can explore their raw and prepared dataets under the relevant view tabs.
@@ -79,12 +80,12 @@ ui <- fluidPage(
                                           )),
                                           h3(p("Model Fitting")),
                                           h4(p("This page has the options for performing model fitting, namely, estimation of task
-                                               paramters. User can select the desired options for the estimation. All non-mandatory options
+                                               parameters. Users can select the desired options for the estimation. All non-mandatory options
                                                are pre-selected as the default options as in the relevant bspam function." )),
                                           h3(p("Score Estimation")),
                                           h4(p("This page has the options for performing score estimation, namely, estimation of person
                                           parameters and model-based scores (in the scale of number of successful tasks per minute). 
-                                          User can select the desired options for score estimation.
+                                          Users can select the desired options for score estimation.
                                           All non-mandatory options are pre-selected as the default options as in the relevant bspam function." )),
                                           br(),
                                           h3(p("References")),
@@ -461,7 +462,75 @@ ui <- fluidPage(
                         )
                       ) # end sidebarLayout
              ), # end tabPanel("Score Estimation"
-             
+       ######################################################========Visualization TAB============#########################################
+       
+       tabPanel("Visualization", fluid = TRUE, icon = icon("chart-simple"),
+                sidebarLayout(
+                  sidebarPanel(style="background: #0033A0", width = 2,
+                               fluidRow(
+                                 column(width = 12,
+                                        wellPanel(
+                                          h4(HTML("<b> Which task calibration data will be used? </b>")),
+                                          br(),
+                                          radioButtons(inputId = "VcalibUseData", label = NULL, inline = F, 
+                                                       c("Use the stored task parameters from the prior process." = "1",
+                                                         "Upload previously calibrated task parameters." = "2")),
+                                          conditionalPanel(condition = "input.VcalibUseData == '2'", 
+                                                           uiOutput('Vcalib.resettableInput'),
+                                                           actionButton(inputId = "Vcalib_load.Btn", label = "Load Calibration data"),
+                                                           
+                                          ),
+                                          br(),
+                                          h6(HTML("<b> Only two parameters can be visualized at a time! </b>")),
+                                          checkboxGroupInput("plotTaskParameter", "Select parameter:",
+                                                             c("a" = "a",
+                                                               "b" = "b",
+                                                               "alpha" = "alpha",
+                                                               "beta" = "beta")),
+                                          HTML("Sort condition:"),
+                                          checkboxInput(inputId = "plotTaskSort", label = "Sort", value = FALSE),
+                                          textInput(inputId = "plotTaskid", label = "Input task id:", value = ""),
+                                          br(),
+                                          actionButton(inputId = "plot.task.Btn", label = "Plot.Task", icon = icon("chart-line")),
+                                          ),
+                                        
+                                        wellPanel(
+                                          h4(HTML("<b> Which person data will be used? </b>")),
+                                          br(),
+                                          radioButtons(inputId = "VscoreUseData",
+                                                       label = NULL,
+                                                       inline = F,
+                                                       choices = c("Use the stored scoring data from the prior process." = "1", 
+                                                                   "Upload previously prepared scoring data." ="2")),
+                                          
+                                          conditionalPanel(
+                                            condition = "input.VscoreUseData == '2'",
+                                            uiOutput('Vscore.resettableInput'),
+                                            actionButton(inputId = "Vscore.Data.Btn", label = "Load Scoring data"),
+                                          ),
+                                          br(),
+                                          checkboxGroupInput("plotPersonParameter", "Select parameter:",
+                                                             c("theta" = "theta",
+                                                               "tau" = "tau",
+                                                               "wcpm" = "wcpm")),
+                                          HTML("Show and Sort condition:"),
+                                          checkboxInput(inputId = "plotPersonShowSE", label = "Show SE", value = FALSE),
+                                          checkboxInput(inputId = "plotPersonSort", label = "Sort", value = FALSE),
+                                          textInput(inputId = "plotPersonid", label = "Input person id:", value = ""),
+                                          actionButton(inputId = "plot.person.Btn", label = "Plot.Person", icon = icon("chart-line")),
+                                          ),
+                                 )
+                               )
+                  ), 
+                  mainPanel(
+                    tabsetPanel(id = "visual.Tabset",
+                                tabPanel("Plot.Task", plotlyOutput("visual.task")),
+                                tabPanel("Plot.Person", plotlyOutput("visual.person")),
+                    )
+                  )
+                ) # end sidebarLayout
+       ), # end tabPanel("Visulization"
+                                        
   ))
 
 ############################################################################################################
@@ -477,9 +546,15 @@ server <- function(input, output, session) {
   score.result <- NULL # score estimation
   fit.saved <- NULL # saved fit data for scoring
   score.loadedPrepared_data <- NULL # Loaded prepared data for scoring
+  
+  # need to check if occurs error
+  score.calib.loaded_data <- NULL
+  
   score.saved <- NULL # saved scoring data
   score.loaded.external.Data <- NULL # loaded external
   
+  Vcalib.loaded.Data <- NULL # Loaded Visual calib data
+  Vscore.loaded.Data <- NULL # Loaded Visual score data
   # docs <- "Guidence for Preparing data..."
   
   #output$caption <- renderText({
@@ -1297,6 +1372,185 @@ server <- function(input, output, session) {
     })
     
   })
+  
+  
+  ######=================== action for Visulization ==================
+  
+  ##====================== Block for load Vcalib data =============##
+  
+  # show upload button of Vcalib data
+  output$Vcalib.resettableInput <- renderUI({
+    
+    fileInput(inputId = "Vcalib.upload.prepared", NULL, multiple = FALSE)
+  })
+  
+  # load Vcalib data 
+  Vload.calib.Data <- reactive({
+    req(input$Vcalib.upload.prepared)
+    ext <- tools::file_ext(input$Vcalib.upload.prepared$name)
+    if (ext == "csv") {
+      df <- read.csv(input$Vcalib.upload.prepared$datapath, header=TRUE)
+    } else if (ext == "tsv") {
+      df <- vroom::vroom(input$Vcalib.upload.prepared$datapath, delim = "\t")
+    } else if (ext == "rds") {
+      df <- readRDS(input$Vcalib.upload.prepared$datapath)
+    } else if (ext == "rda" | ext == "RData" | ext == "rdata") {
+      tf <- load(file=input$Vcalib.upload.prepared$datapath)
+      df <- get(tf)
+      rm(tf) # delete temp data
+    } else {
+      validate("Invalid file; Please upload a file with correct extension name")
+    }
+    
+    return (df)
+    
+  })
+  
+  # load Vcalib data button
+  observeEvent(input$Vcalib_load.Btn, {
+    Vcalib.loaded.Data <<- Vload.calib.Data()
+    
+  })  #end observe Vcalib
+  
+  ##====================== Block for load Vscored data =============##
+  # show upload button of score data
+  output$Vscore.resettableInput <- renderUI({
+    
+    fileInput(inputId = "Vscore.upload.prepared", NULL, multiple = FALSE)
+  })
+  
+  # load scoring formerly prepared data 
+  Vscore.load.Data <- reactive({
+    req(input$Vscore.upload.prepared)
+    ext <- tools::file_ext(input$Vscore.upload.prepared$name)
+    if (ext == "csv") {
+      df <- read.csv(input$Vscore.upload.prepared$datapath, header=TRUE)
+    } else if (ext == "tsv") {
+      df <- vroom::vroom(input$Vscore.upload.prepared$datapath, delim = "\t")
+    } else if (ext == "rds") {
+      df <- readRDS(input$Vscore.upload.prepared$datapath)
+    } else if (ext == "rda" | ext == "RData" | ext == "rdata") {
+      tf <- load(file=input$Vscore.upload.prepared$datapath)
+      df <- get(tf)
+      rm(tf) # delete temp data
+    } else {
+      validate("Invalid file; Please upload a file with correct extension name")
+    }
+    
+#    updateTabsetPanel(session, "score.Tabset", selected = "View Uploaded Person Data") # Tabset name, tabID
+    return (df)
+    
+  })
+  
+  observeEvent(input$Vscore.Data.Btn, {
+    Vscore.loaded.Data <<- Vscore.load.Data()
+  })
+  
+  # plot.task button
+  observeEvent(input$plot.task.Btn, {
+    # check data
+    if (input$VcalibUseData == "1") { # Default to use fit.model data in prior process
+      if (!is.null(fit.saved)) { # if saved fit.model data
+        calib.data <- fit.saved        
+      } else { # else
+        calib.data <- score.calib.loaded_data  
+      }
+
+    } else { # when "2", upload Vcalib data
+      calib.data <- Vcalib.loaded.Data
+    }
+    
+    if (!is.null(calib.data)) {
+      # get input parameters
+      inputParam <- strsplit(input$plotTaskParameter,split=" ") #list
+      
+      if (length(inputParam) > 2) { # error
+        showModal(modalDialog(
+          title = "Error-plotting",
+          "Only two parameters can be visualized at a time!",
+          easyClose = TRUE
+        ))  
+        return()
+      } else {
+        # prepare parameter
+        if (length(inputParam) == 1) {
+          taskParam <- c(unlist(inputParam[1]))
+        } else {
+          taskParam <- c(unlist(inputParam)[1], unlist(inputParam)[2])
+        }
+      }
+
+        output$visual.task <- renderPlotly({
+  
+        if (!(input$plotTaskid ==  "")) { # with task id
+            inputTaskid <- strsplit(input$plotTaskid,split=",") #list
+            task_Ids <- c(unlist(inputTaskid[1]))
+            plot.task(object = calib.data, parameter = taskParam, sort = input$plotTaskSort, task = task_Ids) 
+          } else { # without task id
+            plot.task(object = calib.data, parameter = taskParam, sort = input$plotTaskSort)
+          }
+        })
+        updateTabsetPanel(session, "visual.Tabset", selected = "Plot.Task") # show plot.task
+    } else {
+        showModal(modalDialog(
+          title = "Error-plotting",
+          "Please select your data first!",
+          easyClose = TRUE
+        ))
+    }
+  })
+  
+  # plot.person button
+  observeEvent(input$plot.person.Btn, {
+    # check data
+    if (input$VscoreUseData == "1") { # Default to use scoring data in prior process
+      if (!is.null(score.saved)) { # if saved fit.model data
+        Vscore.data <- score.saved        
+      } 
+    } else { # when "2", upload Vscore data
+      print(Vscore.loaded.Data)
+      Vscore.data <- Vscore.loaded.Data
+    }
+    if (!is.null(Vscore.data)) {
+      # get input parameters
+      inputPersonParam <- strsplit(input$plotPersonParameter,split=" ") #list
+      if (length(inputPersonParam) > 2) { # error
+        showModal(modalDialog(
+          title = "Error-plotting",
+          "Only two parameters can be visualized at a time!",
+          easyClose = TRUE
+        ))  
+        return()
+      } else {
+        # prepare parameter
+        if (length(inputPersonParam) == 1) {
+          personParam <- c(unlist(inputPersonParam[1]))
+        } else {
+          personParam <- c(unlist(inputPersonParam)[1], unlist(inputPersonParam)[2])
+        }
+      }
+      
+
+      output$visual.person <- renderPlotly({
+        if (!(input$plotPersonid ==  "")) { # with task id
+          inputPersonid <- strsplit(input$plotPersonid,split=",") #list
+          person_Ids <- c(unlist(inputPersonid[1]))
+          plot.person(object = Vscore.data, parameter = personParam, show.se = input$plotPersonShowSE, sort = input$plotPersonSort, person = person_Ids) 
+        } else { # without task id
+          plot.person(object = Vscore.data, parameter = personParam, show.se = input$plotPersonShowSE, sort = input$plotPersonSort)
+        }
+      })
+      updateTabsetPanel(session, "visual.Tabset", selected = "Plot.Person") # show plot.person
+    } else {
+      showModal(modalDialog(
+        title = "Error-plotting",
+        "Please select your data first!",
+        easyClose = TRUE
+      ))
+    }
+    
+  })
+  ######===================End for visualization=====================
   
 }
 
