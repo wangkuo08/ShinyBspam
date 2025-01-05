@@ -20,7 +20,7 @@ library(shinyWidgets)
 
 
 ############################################################################################################
-##                                     USER INTERFACE SECTION                                             ##
+##                                  USER INTERFACE SECTION                                             
 ############################################################################################################
 
 ui <- fluidPage(
@@ -44,11 +44,18 @@ ui <- fluidPage(
               top: calc(50% - 50px);;
               left: calc(50% - 400px);;
             }
+            # .tabbable > .nav > li > a                  {color:black}
+            # .tabbable > .nav > li[class=active]    > a {color:purple}
+            a[data-value='Testlet ON'] {
+              color: red  !important; 
+              pointer-events: none;
+              cursor: default;
+            }
            "
       )
     )
   ),
-  
+  # 027bff
   navbarPage("bspam Shiny App", id = "bspam", theme = shinytheme("lumen"),
 
              navbarMenu("Welcome",
@@ -132,12 +139,8 @@ ui <- fluidPage(
              )),
              # end  navbarMenu
              navbarMenu("Start here",
-                        nav_item(h4("set to ON with passage-level data")),
-                        nav_item(h4("set to OFF with sentence-level data")),
-                        # nav_item(radioButtons(inputId = "passage.level", selected = "", label = NULL, inline = F,
-                        #                       c("Passage-level data." = "yes",
-                        #                         "Sentence-level data." = "no"))),
-                        nav_item(switchInput(inputId = "passage.level",value = TRUE)),
+                        nav_item(h4("Toggle the switch to ON to active the testlet model options")),
+                        nav_item(switchInput(inputId = "TestletFlag",value = 0)), # default is task level
                         
              ),
        ######################################################========DATA PREPARATION TAB============#########################################
@@ -154,9 +157,16 @@ ui <- fluidPage(
                                               wellPanel(
                                                 h4(HTML("<b> Try bspam Datasets </b>")),
                                                 # Input: Selector for choosing dataset ----
-                                                selectInput(inputId = "dataset",
-                                                            label = HTML("Select"),
-                                                            choices = c("none","passage2")),
+                                                conditionalPanel(condition = "input.TestletFlag == 1",
+                                                  selectInput(inputId = "dataset",
+                                                              label = HTML("Select"),
+                                                              choices = c("none","passage2")),
+                                                ),
+                                                conditionalPanel(condition = "input.TestletFlag == 0",
+                                                                 selectInput(inputId = "dataset",
+                                                                             label = HTML("Select"),
+                                                                             choices = c("none","sentence2")),
+                                                ),
                                                 
                                               ),
                                               conditionalPanel(condition = "input.dataset== 'none'",
@@ -173,14 +183,7 @@ ui <- fluidPage(
                                               
                                               wellPanel( 
                                                 h4(HTML("<b> Assign Column Names </b>")),
-                                                # person.id = "id.student",
-                                                # occasion = "occasion",
-                                                # group = "grade",
-                                                # task.id = "id.passage",
-                                                # max.counts = "numwords.pass",
-                                                # obs.counts = "wrc",
-                                                # time = "sec"
-                                                # h4("Set arguments:"),
+
                                                 h5(HTML("* required")),
                                                 
                                                 selectInput(inputId = "person.id",
@@ -270,22 +273,6 @@ ui <- fluidPage(
                                                              #   "bayes" = "bayes")),
                                                               c("mcem" = "mcem")),
                                                 
-                                                #      conditionalPanel( ## DELETE THAT FOR NOW!! USE ONLY DEFAULT DATA FROM PREP STEP!
-                                                #         condition = "input.est == 'bayes'",
-                                                #  hr(style = "border-top: 2px solid #D3D3D3;"),
-                                                #        selectInput(inputId = "fit.model.person.id",
-                                                #                   label = "person.id", choices = NULL),
-                                                #      selectInput(inputId = "fit.model.task.id",
-                                                #                 label = "task.id", choices = NULL),
-                                                #    selectInput(inputId = "fit.model.max.counts",
-                                                #               label = "max.counts", choices = NULL),
-                                                #  selectInput(inputId = "fit.model.obs.counts",
-                                                #             label = "obs.counts", choices = NULL),
-                                                # selectInput(inputId = "fit.model.time",
-                                                #             label = "time", choices = NULL)
-                                                # ),
-                                                
-                                                # hr(style = "border-top: 2px solid #D3D3D3;"),
                                                 selectInput("parSet", "Parameters Setting:",
                                                             c("Default" = "1", "[Custom]" ="2")
                                                 ),
@@ -319,9 +306,7 @@ ui <- fluidPage(
                                        ))),
                         mainPanel(
                           tabsetPanel(id = "fit.model.Tabset",
-                                      #tabPanel("View Raw Data", dataTableOutput("raw_data")),
-                                      # tabPanel("Upload.Data", dataTableOutput("prep.data")),
-                                      # tabPanel("fit.model.summary", verbatimTextOutput("fit.model.summary"))
+
                                       tabPanel("View Uploaded Data", DT::DTOutput("prep.data")),
                                       tabPanel("View Model Fitting Summary", verbatimTextOutput("fit.model.summary"))
                                       
@@ -329,211 +314,7 @@ ui <- fluidPage(
                         )
                       ) # end sidebarLayout
              ), # end tabPanel("Model Fitting"
-       ######################################################========TESTLET TAB============#########################################
-       # tabPanel("Testlet", fluid = TRUE, icon = icon("ruler"), id = "Testlet"
-       #          sidebarLayout(
-       #            sidebarPanel(style = "background: #0033A0", width = 2,
-       #                         fluidRow(
-       #                           column(width = 12,
-       #                                wellPanel(
-       #                                  h4(HTML("<b> Load Your Dataset for Testlet</b>")),
-       #                                  uiOutput('testletDataInput'),
-       #                                  actionButton(inputId = "uploadTestletBtn", label = "Click to load"),),
-       #                         
-       #                                 wellPanel( 
-       #                                   h4(HTML("<b> Assign Column Names </b>")),
-       #                                   # person.id = "id.student",
-       #                                   # occasion = "occasion",
-       #                                   # group = "grade",
-       #                                   # task.id = "id.passage",
-       #                                   # max.counts = "numwords.pass",
-       #                                   # obs.counts = "wrc",
-       #                                   # time = "sec"
-       #                                   # h4("Set arguments:"),
-       #                                   h5(HTML("* required")),
-       #                                   
-       #                                   selectInput(inputId = "testlet.person.id",
-       #                                               label = "person.id*", choices = NULL),
-       #                                   selectInput(inputId = "testlet.sub.task.id",
-       #                                               label = "sub.task.id*", choices = NULL),
-       #                                   selectInput(inputId = "testlet.obs.counts",
-       #                                               label = "obs.counts*", choices = NULL),
-       #                                   selectInput(inputId = "testlet.time",
-       #                                               label = "time*", choices = NULL),
-       #                                   selectInput(inputId = "testlet.task.id",
-       #                                               label = "task.id*", choices = NULL),
-       #                                   selectInput(inputId = "testlet.max.counts",
-       #                                               label = "max.counts*", choices = NULL),
-       # 
-       #                                 ),
-       #                                wellPanel( 
-       #                                  h4(HTML("<b> Run Testlet </b>")),
-       #                                  actionButton(inputId = "runTestletBtn", label = "Run Testlet", icon = icon("cogs")), #gears
-       #                                  actionButton(inputId = "resetTestletBtn", label = "Reset", styleclass = "warning")),
-       #                                wellPanel( 
-       #                                  h4(HTML("<b> Load Your Censor Dataset </b>")),
-       #                                  uiOutput('censorDataInput'),
-       #                                  actionButton(inputId = "uploadCensorBtn", label = "Click to load"),
-       #                                
-       #                                  h4(HTML("<b> Run Scoring Passage </b>")),
-       #                                  actionButton(inputId = "runSPBtn", label = "Run Scoring Passage", icon = icon("cogs")), #gears
-       #                               )
-       #                           ))), # end sidepanel
-       #                             mainPanel(
-       #                               tabsetPanel(id = "score.Tabset",
-       #                                           #tabPanel("View Testlet Data", verbatimTextOutput("testlet.data")),
-       #                                           tabPanel("View Testlet Data", DT::DTOutput("testlet.data")),
-       #                                           tabPanel("View Testlet Fit", verbatimTextOutput("testlet.fit.model")),
-       #                                           tabPanel("View Scoring Passage", DT::DTOutput("scoring.passage"))
-       #                               )
-       #                             )
-       #          ) # end sidebarLayout
-       # ), # end tabPanel("Testlet"
-       
-       ######################################################========SCORE ESTIMATION TAB============#########################################
-       
-             # tabPanel("Score Estimation", fluid = TRUE, icon = icon("chart-bar"),
-             #          sidebarLayout(
-             #            sidebarPanel(style="background: #0033A0", width = 2,
-             #                         fluidRow(
-             #                           column(width = 12,
-             #                                  wellPanel(
-             #                                    h4(HTML("<b> Which task calibration data will be used? </b>")),
-             #                                    br(),
-             #                                    radioButtons(inputId = "calibUseData", label = NULL, inline = F, 
-             #                                                 c("Use the stored task parameters from model fitting tab." = "1",
-             #                                                   "Upload previously calibrated task parameters." = "2")),
-             #                                    
-             #                                    
-             #                                    conditionalPanel(condition = "input.calibUseData == '2'", 
-             #                                                     uiOutput('score.calib.resettableInput'),
-             #                                                     actionButton(inputId = "calib_load.Btn", label = "Load Calibration data"),
-             #                                                     
-             #                                    )),
-             # 
-             #                                  wellPanel(
-             #                                    h4(HTML("<b> Which person data will be used? </b>")),
-             #                                    br(),
-             #                                    radioButtons(inputId = "scoreUseData",
-             #                                                label = NULL,
-             #                                                inline = F,
-             #                                               choices = c("Use the stored person data from data preparation/model fitting tab." = "1", 
-             #                                                           "Upload previously prepared person data." ="2")
-             #                                    ),
-             #                                  
-             #                                    conditionalPanel(
-             #                                      condition = "input.scoreUseData == '2'",
-             #                                      uiOutput('score.person.resettableInput'),
-             #                                      actionButton(inputId = "score.getPrepared.Btn", label = "Load Person data"),
-             #                                    )),
-             #                                  
-             #                                  wellPanel(
-             #                                    h4(HTML("<b> Select Scoring Estimator </b>")),
-             #                                    br(),
-             #                                    radioButtons(inputId = "scoreEst", label = NULL, inline = FALSE,
-             #                                                 # c("mle" = "mle",
-             #                                                 #   "map" = "map",
-             #                                                 #   "eap" = "eap",
-             #                                                 #   "bayes" = "bayes"), selected = "bayes"),
-             #                                                 c("mle" = "mle",
-             #                                                   "map" = "map",
-             #                                                   "eap" = "eap"), selected = "mle"),
-             #                                    selectInput("scoreParSet", "Estimator Options",
-             #                                                c("Default" = "1", "[Custom]" ="2")),
-             #                                    # conditionalPanel(
-             #                                    #   condition = "input.scoreEst == 'bayes'",
-             #                                    #   selectInput(inputId = "score.person.id",
-             #                                    #               label = "person.id", choices = NULL),
-             #                                    #   selectInput(inputId = "score..task.id",
-             #                                    #               label = "task.id", choices = NULL),
-             #                                    #   selectInput(inputId = "score.max.counts",
-             #                                    #               label = "max.counts", choices = NULL),
-             #                                    #   selectInput(inputId = "score.obs.counts",
-             #                                    #               label = "obs.counts", choices = NULL),
-             #                                    #   selectInput(inputId = "score.time",
-             #                                    #               label = "time", choices = NULL)
-             #                                    # ),
-             #                                    # 
-             #                                    # Only show this panel if not bayes
-             #                                    conditionalPanel(condition = "input.scoreParSet == '2' & input.scoreEst != 'bayes'",
-             #                                      radioButtons(inputId = "scoreSe", label = "se:",
-             #                                                   choices = c(Analytic = "analytic",
-             #                                                     Bootstrap = "bootstrap"), inline = TRUE, selected="analytic"),
-             #                                      conditionalPanel(
-             #                                        condition = "input.scoreSe == 'bootstrap'",
-             #                                        sliderInput(inputId = "score.failsafe", label = "failsafe:", value = c(0), min = 0, max = 50),
-             #                                        sliderInput(inputId = "score.bootstrap", label = "bootstrp:", value = c(100), min = 50, max = 500)
-             #                                     )
-             #                                    )
-             #                                  ),
-             # 
-             #                                  wellPanel(h4(HTML("<b> Other Options </b>")),
-             #                                            br(),
-             #                                            radioButtons(inputId = "scoreExtOption", 
-             #                                                         label = "Perform External Scoring",
-             #                                                          choices = c("no" = "no",
-             #                                                                      "yes" = "yes",
-             #                                                                      "upload" = "upload"), inline = TRUE, selected = "no"),
-             #                                            
-             #                                            conditionalPanel(condition = "input.scoreExtOption == 'yes'",
-             #                                                             textInput(inputId = "score.external", 
-             #                                                                       label = "Scoring based on external option", 
-             #                                                                       value = "")),
-             #                                            conditionalPanel(
-             #                                              condition = "input.scoreExtOption == 'upload'",
-             #                                              fileInput(inputId = "score.upload.external", NULL, multiple = FALSE),
-             #                                              actionButton(inputId = "externalload.Btn", label = "Load external"),
-             #                                            ),
-             #                                            radioButtons(inputId = "score.type", label = "Output Type",
-             #                                                         c("general" = "general",
-             #                                                           "orf" = "orf"), inline = TRUE),
-             #                                            ),
-             #                         
-             #                         wellPanel(
-             #                           h4(HTML("<b> Which cases will be scored? </b>")),
-             #                           br(),
-             #                         radioButtons(inputId = "scoreCases", label = NULL,
-             #                                      c("default" = "default",
-             #                                        "input" = "input",
-             #                                        "upload" = "upload"), inline = TRUE, selected = "default"),
-             #                         conditionalPanel(
-             #                           condition = "input.scoreCases == 'input'",
-             #                           textInput(inputId = "input.score.cases", label = "input cases:", value = ""),
-             #                         ),
-             #                         conditionalPanel(
-             #                           condition = "input.scoreCases == 'upload'",
-             #                           fileInput(inputId = "score.upload.case", NULL, multiple = FALSE),
-             #                           actionButton(inputId = "caseload.Btn", label = "Load case"),
-             #                         )),
-             #                         
-             #                         wellPanel(
-             #                           h4(HTML("<b> Perform Scoring </b>")),
-             #                           br(),
-             #                         actionButton(inputId = "score.Btn", label = "Run", icon = icon("cogs")),
-             #                         actionButton(inputId = "score.resetBtn", label = "Reset", styleclass = "warning")
-             #            ), 
-             #            wellPanel(h4(HTML("<b> Save Scoring Data </b>")),
-             #                      br(),
-             #                      radioButtons(inputId = "save.score.type", label = "File Type",
-             #                                   c("csv file" = "csv",
-             #                                     "rds file" = "rds"), inline = TRUE),
-             #                      textInput(inputId = "save.score.as", "Enter file name below"),
-             #                      downloadButton("download.score.data", "Save"))
-             #            ))),
-             #            mainPanel(
-             #              tabsetPanel(id = "score.Tabset",
-             #                          # tabPanel("Uploaded.Calib.Data", verbatimTextOutput("calib.data")),
-             #                          # tabPanel("score.Upload.Data", dataTableOutput("score.prep.data")),
-             #                          # tabPanel("score.summary", verbatimTextOutput("score.summary"))
-             #                          tabPanel("View Calibration Data", verbatimTextOutput("calib.data")),
-             #                          tabPanel("View Uploaded Person Data", dataTableOutput("score.prep.data")),
-             #                          # try dataTable
-             #                          tabPanel("View Scoring Summary", dataTableOutput("score.summary"))
-             #                          # tabPanel("View Scoring Summary", verbatimTextOutput("score.summary"))                                     
-             #              )
-             #            )
-             #          ) # end sidebarLayout
-             # ), # end tabPanel("Score Estimation"
+     
        ######################################################========Visualization TAB============#########################################
        
        tabPanel("Visualization", fluid = TRUE, icon = icon("chart-simple"),
@@ -665,8 +446,8 @@ server <- function(input, output, session) {
   # hideTab(inputId = "bspam", target = "Score Estimation")
   # hideTab(inputId = "bspam", target = "Testlet")
   
-  observeEvent(input$passage.level, {
-    if (input$passage.level == FALSE) { # sentence-level
+  observeEvent(input$TestletFlag, {
+    if (input$TestletFlag == TRUE) { # sub task-level
       
       # hide plot_person_panel
       shinyjs::hide("plot2")
@@ -675,94 +456,11 @@ server <- function(input, output, session) {
       removeTab(inputId = "bspam", target = "Data Preparation") #
       removeTab(inputId = "bspam", target = "Model Fitting") #
       removeTab(inputId = "bspam", target = "Score Estimation") #
-      removeTab(inputId = "bspam", target = "Testlet") #
-      insertTab(inputId = "bspam", 
-                tabPanel("Testlet", fluid = TRUE, icon = icon("ruler"), id = "Testlet",
-                         sidebarLayout(
-                           sidebarPanel(style = "background: #0033A0", width = 2,
-                                        fluidRow(
-                                          column(width = 12,
-                                                 wellPanel(
-                                                   h4(HTML("<b> Load Your Dataset for Testlet</b>")),
-                                                   uiOutput('testletDataInput'),
-                                                   actionButton(inputId = "uploadTestletBtn", label = "Click to load"),),
-                                                 
-                                                 wellPanel( 
-                                                   h4(HTML("<b> Assign Column Names </b>")),
-                                                   # person.id = "id.student",
-                                                   # occasion = "occasion",
-                                                   # group = "grade",
-                                                   # task.id = "id.passage",
-                                                   # max.counts = "numwords.pass",
-                                                   # obs.counts = "wrc",
-                                                   # time = "sec"
-                                                   # h4("Set arguments:"),
-                                                   h5(HTML("* required")),
-                                                   
-                                                   selectInput(inputId = "testlet.person.id",
-                                                               label = "person.id*", choices = NULL),
-                                                   selectInput(inputId = "testlet.sub.task.id",
-                                                               label = "sub.task.id*", choices = NULL),
-                                                   selectInput(inputId = "testlet.obs.counts",
-                                                               label = "obs.counts*", choices = NULL),
-                                                   selectInput(inputId = "testlet.time",
-                                                               label = "time*", choices = NULL),
-                                                   selectInput(inputId = "testlet.task.id",
-                                                               label = "task.id*", choices = NULL),
-                                                   selectInput(inputId = "testlet.max.counts",
-                                                               label = "max.counts*", choices = NULL),
-                                                   
-                                                 ),
-                                                 wellPanel( 
-                                                   h4(HTML("<b> Run Testlet </b>")),
-                                                   actionButton(inputId = "runTestletBtn", label = "Run Testlet", icon = icon("cogs")), #gears
-                                                   actionButton(inputId = "resetTestletBtn", label = "Reset", styleclass = "warning"),
-                                                   br(),
-                                                   h4(HTML("<b> Save Testlet Fit Model </b>")),
-                                                   textInput(inputId = "saveTestletModel", "Enter file name below"),
-                                                   downloadButton("downloadTMData", "Save")
-                                                   ),
-                                                 wellPanel( 
-                                                   h4(HTML("<b> Load Your Censor Dataset </b>")),
-                                                   uiOutput('censorDataInput'),
-                                                   actionButton(inputId = "uploadCensorBtn", label = "Click to load"),
-                                                   
-                                                   h4(HTML("<b> Run Scoring Passage </b>")),
-                                                   actionButton(inputId = "runSPBtn", label = "Scoring Passage", icon = icon("cogs")), #gears
-                                                   br(),
-                                                   h4(HTML("<b> Save Scoring Passage </b>")),
-                                                   radioButtons(inputId = "save.SP.type", label = "File Type",
-                                                                c("csv file" = "csv",
-                                                                  "rds file" = "rds"), inline = TRUE),
-                                                   textInput(inputId = "saveScoringPassage", "Enter file name below"),
-                                                   downloadButton("downloadSPData", "Save")
-                                                 )
-                                          ))), # end sidepanel
-                           mainPanel(
-                             tabsetPanel(id = "score.Tabset",
-                                         #tabPanel("View Testlet Data", verbatimTextOutput("testlet.data")),
-                                         tabPanel("View Testlet Data", DT::DTOutput("testlet.data")), # title, value
-                                         tabPanel("View Testlet Fit", verbatimTextOutput("testlet.fit.model")),
-                                         tabPanel("View Scoring Passage", DT::DTOutput("scoring.passage"))
-                             )
-                           )
-                         ) # end sidebarLayout
-                ), # end tabPanel("Testlet"
-                
-                target = "Start here"
-      )
-
-    } else { # passage-level
-      # show plot_person_panel
-
-      showTab(inputId = "visual.Tabset", target = "Plot.Person")
-      shinyjs::show("plot2")     
-      # remove  
-      removeTab(inputId = "bspam", target = "Data Preparation") #
-      removeTab(inputId = "bspam", target = "Model Fitting") #
-      removeTab(inputId = "bspam", target = "Score Estimation") #
-      removeTab(inputId = "bspam", target = "Testlet") #
-      # insert tab - Data preperation
+      removeTab(inputId = "bspam", target = "Testlet.scoring")#"Score Estimation (Testlet)") #
+      removeTab(inputId = "bspam", target = "Testlet.fit.model") #Testlet, Score Estimation (Testlet)
+      
+      ######################################################========TESTLET DATA PREPARATION TAB============#########################################
+      
       insertTab(inputId = "bspam", 
                 tabPanel("Data Preparation", fluid = TRUE, icon = icon("database"),
                          #tags$style(button_color_css),
@@ -770,15 +468,16 @@ server <- function(input, output, session) {
                          sidebarLayout(
                            #sidebarPanel(titlePanel("Please Select Dataset")),
                            
-                           sidebarPanel(style = "background: #0033A0", width = 2,
+                           sidebarPanel(style = "background: #0033A0", width = 3,
                                         fluidRow(
                                           column(width = 12,
                                                  wellPanel(
                                                    h4(HTML("<b> Try bspam Datasets </b>")),
-                                                   # Input: Selector for choosing dataset ----
-                                                   selectInput(inputId = "dataset",
-                                                               label = HTML("Select"),
-                                                               choices = c("none","passage2")),
+                                                   # Input: Selector for choosing dataset with Testlet ----
+                                                    selectInput(inputId = "dataset",
+                                                                label = HTML("Select"),
+                                                                choices = c("none","sentence.level.data","sentence.cens.high","sentence.cens.low")),
+
                                                    
                                                  ),
                                                  conditionalPanel(condition = "input.dataset== 'none'",
@@ -813,13 +512,26 @@ server <- function(input, output, session) {
                                                                label = "group (optional)", choices = NULL),
                                                    selectInput(inputId = "task.id",
                                                                label = "task.id*", choices = NULL),
+                                                   selectInput(inputId = "sub.task.id",
+                                                               label = "sub.task.id*", choices = NULL),
                                                    selectInput(inputId = "max.counts",
                                                                label = "max.counts*", choices = NULL),
                                                    selectInput(inputId = "obs.counts",
                                                                label = "obs.counts*", choices = NULL),
                                                    selectInput(inputId = "time",
                                                                label = "time*", choices = NULL),
-                                                   
+                                                   h6(HTML("<b> Do your task data involve censoring? </b>")),
+                                                   # checkboxInput(inputId = "useCens", label = "Use Censoring", value = FALSE),
+                                                   radioButtons(inputId = "radioCens",label="", inline = FALSE,
+                                                                c("No" = "1",
+                                                                  "Yes" = "2")),
+                                                   ##=== Check if using censoring
+                                                   conditionalPanel(
+                                                     condition = "input.radioCens == '2'",
+                                                     h6(HTML("<b> Please specify your censoring column: </b>")),
+                                                     selectInput(inputId = "testlet.cens",
+                                                                 label = "cens*", choices = NULL),
+                                                   )
                                                    #  hr(style = "border-top: 2px solid #D3D3D3;"),
                                                    
                                                    # Input: Numeric entry for number of obs to view ----
@@ -862,6 +574,279 @@ server <- function(input, output, session) {
                 
                 target = "Start here"
       )
+      ######################################################========Testlet Model Fitting TAB============#########################################
+      
+      insertTab(inputId = "bspam", 
+                # tabPanel("Testlet", fluid = TRUE, icon = icon("ruler"), id = "Testlet",
+                tabPanel("Model Fitting", fluid = TRUE, icon = icon("ruler"), id = "Testlet.fit.model",
+                         sidebarLayout(
+                           sidebarPanel(style = "background: #0033A0", width = 2,
+                                        fluidRow(
+                                          column(width = 12,
+                                                 wellPanel(
+                                                   h4(HTML("<b> Did you prepare your data via Data Preparation Tab? </b>")),
+                                                   br(),
+                                                   radioButtons(inputId = "fit_dat", label = NULL, inline = F,
+                                                                c("Yes, use the stored prepared data." = "yes",
+                                                                  "No, upload previously prepared data." = "no")),
+                                                   
+                                                   conditionalPanel(condition = "input.fit_dat == 'no'",
+                                                                    
+                                                                    
+                                                                    # hr(style = "border-top: 2px solid #D3D3D3;"),
+                                                                    # load data
+                                                                    #fileInput(inputId = "upload.prepared", NULL, multiple = FALSE),
+                                                                    # try UI
+                                                                    uiOutput('resettableInput'),
+                                                                    actionButton(inputId = "getPrepared.Btn", label = "Click to load"),
+                                                   )),
+                                                 wellPanel( 
+                                                   h4(HTML("<b> Run Model Fitting </b>")),
+                                                   actionButton(inputId = "fit.model.Btn", label = "RUN MODEL FITTING"),
+                                                   actionButton(inputId = "fit.resetBtn", label = "Reset", styleclass = "warning"),
+                                                   # actionButton(inputId = "runTestletBtn", label = "Model Fitting", icon = icon("cogs")), #gears
+                                                   # actionButton(inputId = "resetTestletBtn", label = "Reset", styleclass = "warning"),
+                                                   br(),
+                                                   # h4(HTML("<b> Save Model Fitting (Calibration) Data</b>")),
+                                                   # textInput(inputId = "saveTestletModel", "Enter file name below"),
+                                                   # downloadButton("downloadTMData", "Save")
+                                                   h4(HTML("<b> Save Model Fitting (Calibration) Data </b>")),
+                                                   textInput(inputId = "save.fit.model.as", "Enter file name below"),
+                                                   downloadButton("download.fit.model.data", "Save")
+                                                   )#,
+                                                 
+                                          ))), # end sidepanel
+                           mainPanel(
+
+                             tabsetPanel(id = "fit.model.Tabset",
+
+                                         tabPanel("View Uploaded Data", DT::DTOutput("prep.data")),
+                                         tabPanel("View Model Fitting Summary", verbatimTextOutput("fit.model.summary"))
+                                         
+                             )
+                           )
+                           
+                         ) # end sidebarLayout
+                ), # end tabPanel("Testlet"
+                
+                target = "Data Preparation"
+      )
+      ######################################################======== Testlet Scoring TAB============#########################################
+      
+      # insert tab - Score Estimation
+      insertTab(inputId = "bspam", 
+                tabPanel("Score Estimation", fluid = TRUE, icon = icon("chart-bar"), id = "Testlet.scoring",
+                         sidebarLayout(
+                           sidebarPanel(style="background: #0033A0", width = 2,
+                                        fluidRow(
+                                          column(width = 12,
+                                                 wellPanel(
+                                                   h4(HTML("<b> Which task calibration data will be used? </b>")),
+                                                   br(),
+                                                   radioButtons(inputId = "calibUseData", label = NULL, inline = F, 
+                                                                c("Use the stored task parameters from model fitting tab." = "1",
+                                                                  "Upload previously calibrated task parameters." = "2")),
+                                                   
+                                                   
+                                                   conditionalPanel(condition = "input.calibUseData == '2'", 
+                                                                    uiOutput('score.calib.resettableInput'),
+                                                                    actionButton(inputId = "calib_load.Btn", label = "Load Calibration data"),
+                                                                    
+                                                   )),
+                                                 
+                                                 wellPanel(
+                                                   h4(HTML("<b> Which person data will be used? </b>")),
+                                                   br(),
+                                                   radioButtons(inputId = "scoreUseData",
+                                                                label = NULL,
+                                                                inline = F,
+                                                                choices = c("Use the stored person data from model fitting tab." = "1", 
+                                                                            "Upload person data." ="2")
+                                                   ),
+                                                   
+                                                   
+                                                   conditionalPanel(
+                                                     condition = "input.scoreUseData == '2'",
+                                                     uiOutput('score.person.resettableInput'),
+                                                     actionButton(inputId = "score.getPrepared.Btn", label = "Load Person data"),
+                                                   )
+                                                   ),
+
+                                                 wellPanel(
+                                                   h4(HTML("<b> Run Scoring </b>")),
+                                                   actionButton(inputId = "score.Btn", label = "Scoring", icon = icon("cogs")), #gears
+                                                   actionButton(inputId = "score.resetBtn", label = "Reset", styleclass = "warning"),
+                                                   br(),
+                                                   
+                                                   # h4(HTML("<b> Save Scoring </b>")),
+                                                   # radioButtons(inputId = "save.SP.type", label = "File Type",
+                                                   #              c("csv file" = "csv",
+                                                   #                "rds file" = "rds"), inline = TRUE),
+                                                   # textInput(inputId = "saveScoringPassage", "Enter file name below"),
+                                                   # downloadButton("downloadSPData", "Save")
+                                                   
+                                                 ),# end of wellPanel
+                                                 wellPanel(h4(HTML("<b> Save Scoring Data </b>")),
+                                                           br(),
+                                                           radioButtons(inputId = "save.score.type", label = "File Type",
+                                                                        c("csv file" = "csv",
+                                                                          "rds file" = "rds"), inline = TRUE),
+                                                           textInput(inputId = "save.score.as", "Enter file name below"),
+                                                           downloadButton("download.score.data", "Save"))
+                                                 
+                                          ))),
+                           mainPanel(
+                             tabsetPanel(id = "score.Tabset",
+
+                                         tabPanel("View Calibration Data", verbatimTextOutput("calib.data")),
+                                         tabPanel("View Uploaded Person Data", DT::DTOutput("score.prep.data")),
+                                         # try dataTable
+                                         tabPanel("View Scoring Summary", DT::DTOutput("score.summary"))
+                                         # tabPanel("View Scoring Summary", verbatimTextOutput("score.summary"))                                     
+                             )
+                           )
+                         ) # end sidebarLayout
+                ), # end tabPanel("Score Estimation"
+                
+                target = "Model Fitting"
+      ) # end of insert tab - Score Estimation
+      insertTab(inputId = "bspam", 
+                tabPanel("Testlet ON", fluid = TRUE), target = "Visualization"
+      )
+      
+      
+    } else { # passage-level
+      # show plot_person_panel
+
+      showTab(inputId = "visual.Tabset", target = "Plot.Person")
+      shinyjs::show("plot2")     
+      # remove  
+      removeTab(inputId = "bspam", target = "Data Preparation") #
+      removeTab(inputId = "bspam", target = "Model Fitting") #
+      removeTab(inputId = "bspam", target = "Score Estimation") #
+      # removeTab(inputId = "bspam", target = "Score Estimation (Testlet)") #
+      removeTab(inputId = "bspam", target = "Testlet.fit.model") #
+      removeTab(inputId = "bspam", target = "Testlet.scoring") #
+      removeTab(inputId = "bspam", target = "Testlet ON") #
+      # removeTab(inputId = "bspam", target = "Testlet") #Testlet
+      # insert tab - Data preperation
+      
+      ######################################################========DATA PREPARATION TAB============#########################################
+      
+      insertTab(inputId = "bspam", 
+                tabPanel("Data Preparation", fluid = TRUE, icon = icon("database"),
+                         #tags$style(button_color_css),
+                         # Sidebar layout with a input and output definitions
+                         sidebarLayout(
+                           #sidebarPanel(titlePanel("Please Select Dataset")),
+                           
+                           sidebarPanel(style = "background: #0033A0", width = 2,
+                                        fluidRow(
+                                          column(width = 12,
+                                                 wellPanel(
+                                                   h4(HTML("<b> Try bspam Datasets </b>")),
+                                                   # Input: Selector for choosing dataset ----
+
+                                                    selectInput(inputId = "dataset",
+                                                                label = HTML("Select"),
+                                                                choices = c("none","passage2")),
+
+                                                   
+                                                 ),
+                                                 conditionalPanel(condition = "input.dataset== 'none'",
+                                                                  wellPanel(
+                                                                    h4(HTML("<b> Load Your Dataset </b>")),
+                                                                    selectInput(inputId = "datafile",
+                                                                                label = HTML("Select your file type"),
+                                                                                choices = c("rds | rda | rdata", "csv | tsv")),
+                                                                    
+                                                                    # fileInput(inputId = "upload", NULL, multiple = FALSE),
+                                                                    # try UI
+                                                                    uiOutput('resetUploadInput'),
+                                                                    actionButton(inputId = "getUploadBtn", label = "Click to load"),)),
+                                                 
+                                                 wellPanel( 
+                                                   h4(HTML("<b> Assign Column Names </b>")),
+                                                   # person.id = "id.student",
+                                                   # occasion = "occasion",
+                                                   # group = "grade",
+                                                   # task.id = "id.passage",
+                                                   # max.counts = "numwords.pass",
+                                                   # obs.counts = "wrc",
+                                                   # time = "sec"
+                                                   # h4("Set arguments:"),
+                                                   h5(HTML("* required")),
+                                                   
+                                                   selectInput(inputId = "person.id",
+                                                               label = "person.id*", choices = NULL),
+                                                   selectInput(inputId = "occasion",
+                                                               label = "occasion (optional)", choices = NULL),
+                                                   selectInput(inputId = "group",
+                                                               label = "group (optional)", choices = NULL),
+                                                   selectInput(inputId = "task.id",
+                                                               label = "task.id*", choices = NULL),
+                                                   selectInput(inputId = "max.counts",
+                                                               label = "max.counts*", choices = NULL),
+                                                   selectInput(inputId = "obs.counts",
+                                                               label = "obs.counts*", choices = NULL),
+                                                   selectInput(inputId = "time",
+                                                               label = "time*", choices = NULL),
+                                                   h6(HTML("<b> Do your task data involve censoring? </b>")),
+                                                   # checkboxInput(inputId = "useCens", label = "Use Censoring", value = FALSE),
+                                                   radioButtons(inputId = "radioCens",label="", inline = FALSE,
+                                                                c("No" = "1",
+                                                                  "Yes" = "2")),
+                                                   ##=== Check if using censoring
+                                                   conditionalPanel(
+                                                     condition = "input.radioCens == '2'",
+                                                     h6(HTML("<b> Please specify your censoring column: </b>")),
+                                                     selectInput(inputId = "testlet.cens",
+                                                                 label = "cens*", choices = NULL),
+                                                   )
+                                                   #  hr(style = "border-top: 2px solid #D3D3D3;"),
+                                                   
+                                                   # Input: Numeric entry for number of obs to view ----
+                                                   #      numericInput(inputId = "obs",
+                                                   #                   label = "Number of observations to view:",
+                                                   #                   value = 10),
+                                                 ),
+                                                 wellPanel( 
+                                                   h4(HTML("<b> Prepare Your Data </b>")),
+                                                   actionButton(inputId = "runBtn", label = "Run", icon = icon("cogs")), #gears
+                                                   actionButton(inputId = "resetBtn", label = "Reset", styleclass = "warning")),
+                                                 wellPanel(
+                                                   h4(HTML("<b> Save Prepared Data </b>")),
+                                                   textInput(inputId = "saveas", "Enter file name below"),
+                                                   downloadButton("downloadData", "Save")),
+                                          ))),
+                           
+                           # Main panel for displaying outputs ----
+                           mainPanel(
+                             # useShinyjs(),
+                             # style = "overflow-y:scroll; max-height: 800px; position:relative; align: centre",
+                             
+                             # Output: Formatted text for caption ----
+                             
+                             
+                             # Output: Verbatim text for data summary ----
+                             
+                             
+                             # Output: HTML table with requested number of observations ----
+                             tabsetPanel(id = "prepareTabset",
+                                         tabPanel("View Raw Data", DT::DTOutput("raw_data")),
+                                         tabPanel("View Prepared Data", DT::DTOutput("prep_data")),
+                                         tabPanel("Summary Statistics", verbatimTextOutput("summary"))
+                                         
+                             )
+                           )
+                           
+                         )
+                ), # end tabPanel("Data Preparation"
+                
+                target = "Start here"
+      )
+      ######################################################========MODEL FITTING TAB============#########################################
+      
       # insert tab - Model Fitting
       insertTab(inputId = "bspam", 
                 tabPanel("Model Fitting", fluid = TRUE, icon = icon("ruler"),
@@ -894,22 +879,7 @@ server <- function(input, output, session) {
                                                                 #   "bayes" = "bayes")),
                                                                 c("mcem" = "mcem")),
                                                    
-                                                   #      conditionalPanel( ## DELETE THAT FOR NOW!! USE ONLY DEFAULT DATA FROM PREP STEP!
-                                                   #         condition = "input.est == 'bayes'",
-                                                   #  hr(style = "border-top: 2px solid #D3D3D3;"),
-                                                   #        selectInput(inputId = "fit.model.person.id",
-                                                   #                   label = "person.id", choices = NULL),
-                                                   #      selectInput(inputId = "fit.model.task.id",
-                                                   #                 label = "task.id", choices = NULL),
-                                                   #    selectInput(inputId = "fit.model.max.counts",
-                                                   #               label = "max.counts", choices = NULL),
-                                                   #  selectInput(inputId = "fit.model.obs.counts",
-                                                   #             label = "obs.counts", choices = NULL),
-                                                   # selectInput(inputId = "fit.model.time",
-                                                   #             label = "time", choices = NULL)
-                                                   # ),
                                                    
-                                                   # hr(style = "border-top: 2px solid #D3D3D3;"),
                                                    selectInput("parSet", "Parameters Setting:",
                                                                c("Default" = "1", "[Custom]" ="2")
                                                    ),
@@ -956,6 +926,8 @@ server <- function(input, output, session) {
                 
                 target = "Data Preparation"
       )
+      ######################################################========Score Estimation TAB============#########################################
+      
       # insert tab - Score Estimation
       insertTab(inputId = "bspam", 
                 tabPanel("Score Estimation", fluid = TRUE, icon = icon("chart-bar"),
@@ -1053,6 +1025,18 @@ server <- function(input, output, session) {
                                                            radioButtons(inputId = "score.type", label = "Output Type",
                                                                         c("general" = "general",
                                                                           "orf" = "orf"), inline = TRUE),
+                                                           h6(HTML("<b> Do your task data involve censoring? </b>")),
+                                                           # checkboxInput(inputId = "useCens", label = "Use Censoring", value = FALSE),
+                                                           radioButtons(inputId = "radioCensP",label="", inline = FALSE,
+                                                                        c("No" = "1",
+                                                                          "Yes" = "2")),
+                                                           ##=== Check if using censoring
+                                                           conditionalPanel(
+                                                             condition = "input.radioCensP == '2'",
+                                                             h6(HTML("<b> Please specify your censoring column: </b>")),
+                                                             selectInput(inputId = "scoring.testlet.cens",
+                                                                         label = "cens*", choices = NULL),
+                                                           )
                                                  ),
                                                  
                                                  wellPanel(
@@ -1088,9 +1072,7 @@ server <- function(input, output, session) {
                                           ))),
                            mainPanel(
                              tabsetPanel(id = "score.Tabset",
-                                         # tabPanel("Uploaded.Calib.Data", verbatimTextOutput("calib.data")),
-                                         # tabPanel("score.Upload.Data", dataTableOutput("score.prep.data")),
-                                         # tabPanel("score.summary", verbatimTextOutput("score.summary"))
+
                                          tabPanel("View Calibration Data", verbatimTextOutput("calib.data")),
                                          tabPanel("View Uploaded Person Data", DT::DTOutput("score.prep.data")),
                                          # try dataTable
@@ -1103,15 +1085,143 @@ server <- function(input, output, session) {
                 
                 target = "Model Fitting"
       )
-    }
+    } # end else for condition of TestletFlag
     
+    # reset all input
+    ResetAll()
+
   })
+  
+  ######======= ResetAll =======
+  ResetAll <- function() {
+    
+    # reset PREP =========================
+    output$resetUploadInput <- renderUI({
+      
+      fileInput(inputId = "upload.Data", NULL, multiple = FALSE)
+    })
+    
+    # reset elements
+    updateSelectInput(session,inputId = "dataset", selected = "none")
+    updateSelectInput(session,'person.id','person.id*', choices = character(0))
+    updateSelectInput(session,'occasion', 'occasion (optional)', choices = character(0))
+    updateSelectInput(session,inputId = "group", choices = "", selected = character(0))
+    updateSelectInput(session,inputId = "task.id", choices = "", selected = character(0))
+    updateSelectInput(session,inputId = "sub.task.id", choices = "", selected = character(0))
+    updateSelectInput(session,inputId = "max.counts", choices = "", selected = character(0))
+    updateSelectInput(session,inputId = "obs.counts", choices = "", selected = character(0))
+    updateSelectInput(session,'time', 'time*', choices = character(0))
+    updateSelectInput(session,inputId = "testlet.cens", choices = "", selected = character(0))
+    
+    # reset variable
+    values$saveData <- NULL
+    values$uploaded_data <- NULL
+    
+    # reset upload data
+    # uploaded_data <- NULL
+    output$raw_data <- DT::renderDT({
+      datatable(values$uploaded_data) # NULL
+    })
+    
+    output$prep_data <- DT::renderDT({
+      datatable(values$saveData) # NULL
+    })
+    
+    output$summary <- renderText({ "" })
+    
+    # update tabletpanel
+    updateTabsetPanel(session, "prepareTabset", selected = "View Raw Data")
+    
+    updateTextInput(session, "saveas", value = "")
+    
+    # reset Fit.Model ==============================
+    updateRadioButtons(session, "fit_dat", selected = "yes")
+    
+    updateSliderInput(session,inputId = "k.in", value = c(5))
+    updateSliderInput(session,inputId = "rep.in", value = c(2))
+    
+    updateSelectInput(session, inputId = "parSet", selected = "1")
+    
+    updateRadioButtons(session, "est", selected = input$est) #input$est
+    updateRadioButtons(session, "se", selected = "none")
+    updateRadioButtons(session, "verbose", selected = FALSE)
+    
+    # reset output area
+    output$prep.data <- DT::renderDT({
+      NULL
+    })
+    output$fit.modle.summary <- renderText({
+      ""
+    })    
+    
+    # update tabletpanel
+    updateTabsetPanel(session, "fit.model.Tabset", selected = "View Uploaded Data")
+    
+    # reset Scoring ========================
+    # reset upload
+    output$score.person.resettableInput <- renderUI({
+      
+      fileInput(inputId = "person.upload.prepared", NULL, multiple = FALSE)
+    })
+    output$score.calib.resettableInput <- renderUI({
+      
+      fileInput(inputId = "calib.upload.prepared", NULL, multiple = FALSE)
+    })
+    
+    # reset data area
+    updateRadioButtons(session, "calibUseData", selected = "1") 
+    updateRadioButtons(session, "scoreUseData", selected = "1") 
+    
+    updateRadioButtons(session, "scoreEst", selected = "bayes") 
+    updateSelectInput(session, inputId = "scoreParSet", selected = "1")
+    updateRadioButtons(session, "scoreExtOption", selected = "no") 
+    updateRadioButtons(session, "score.type", selected = "general")
+    updateSliderInput(session,inputId = "score.failsafe", value = c(0))
+    updateSliderInput(session,inputId = "score.bootstrap", value = c(100))
+    updateRadioButtons(session, "scoreCases", selected = "default")    
+    
+    # reset output area
+    output$calib.data <- renderText({
+      ""
+    })
+    output$score.prep.data <- renderDataTable({
+      NULL
+    })
+    output$score.summary <- renderDataTable({
+      NULL
+    })
+    
+    # update tabletpanel
+    updateTabsetPanel(session, "score.Tabset", selected = "View Calibration Data")
+    
+    # reset Visual ========================
+    # reset data area
+    updateRadioButtons(session, "VcalibUseData", selected = "1") 
+    updateCheckboxGroupInput(session, "plotTaskParameter", selected = "")
+    
+    # reset output
+    output$visual.task <- renderPlotly({ NULL })
+    output$visual.person <- renderPlotly({ NULL })
+    updateTabsetPanel(session, "visual.Tabset", selected = "Plot.Task")
+  }
+  
+  ######=================== action for data preparation ==================######
   
   # Using available datasets in bspam
   datasetInput <- reactive({
-    switch(input$dataset,
-           "none" = NULL,
-           "passage2" = passage2)
+    if (input$TestletFlag == 0) {
+      switch(input$dataset,
+             "none" = NULL,
+             "passage2" = passage2)     
+    } else {
+      switch(input$dataset,
+             "none" = NULL,
+             "sentence.level.data" = sentence.level.data,
+             "sentence.cens.high" = sentence.cens.high,
+             "sentence.cens.low" = sentence.cens.low
+             )     
+    }
+
   })
   
   # get data set columns name
@@ -1185,9 +1295,11 @@ server <- function(input, output, session) {
     updateSelectInput(session,'occasion', 'occasion (optional)', choices = character(0))
     updateSelectInput(session,inputId = "group", choices = "", selected = character(0))
     updateSelectInput(session,inputId = "task.id", choices = "", selected = character(0))
+    updateSelectInput(session,inputId = "sub.task.id", choices = "", selected = character(0))
     updateSelectInput(session,inputId = "max.counts", choices = "", selected = character(0))
     updateSelectInput(session,inputId = "obs.counts", choices = "", selected = character(0))
     updateSelectInput(session,'time', 'time*', choices = character(0))
+    updateSelectInput(session,inputId = "testlet.cens", choices = "", selected = character(0))
     
     # reset variable
     values$saveData <- NULL
@@ -1259,6 +1371,7 @@ server <- function(input, output, session) {
           # input$occasion == "" |
           # input$group == "" |
           input$task.id == "" |
+          # input$sub.task.id == "" |
           input$max.counts == "" |
           input$obs.counts == "" |
           input$time == "" ) {
@@ -1270,14 +1383,30 @@ server <- function(input, output, session) {
         return()
       }
 
-      small_data <- prep(data = data.name,
-                         person.id = input$person.id,
-                         occasion = input$occasion,
-                         group = input$group,
-                         task.id = input$task.id,
-                         max.counts = input$max.counts,
-                         obs.counts = input$obs.counts,
-                         time = input$time)
+      if (input$TestletFlag == 0) { # Task level
+        small_data <- prep(data = data.name,
+                           person.id = input$person.id,
+                           occasion = input$occasion,
+                           group = input$group,
+                           task.id = input$task.id,
+                           max.counts = input$max.counts,
+                           obs.counts = input$obs.counts,
+                           cens = input$testlet.cens,
+                           time = input$time)        
+      } else { # sub task level with Testlet ON
+        small_data <- prep(data = data.name,
+                           person.id = input$person.id,
+                           occasion = input$occasion,
+                           group = input$group,
+                           task.id = input$task.id,
+                           sub.task.id = input$sub.task.id,
+                           max.counts = input$max.counts,
+                           obs.counts = input$obs.counts,
+                           time = input$time,
+                           cens = input$testlet.cens,
+                           sentence_level = TRUE)  
+      }
+
       
       values$saveData <- small_data
       
@@ -1331,10 +1460,11 @@ server <- function(input, output, session) {
     updateSelectInput(inputId = "occasion", choices = choices_list, selected = character(0))
     updateSelectInput(inputId = "group", choices = choices_list, selected = character(0))
     updateSelectInput(inputId = "task.id", choices = choices_list, selected = character(0))
+    updateSelectInput(inputId = "sub.task.id", choices = choices_list, selected = character(0))
     updateSelectInput(inputId = "max.counts", choices = choices_list, selected = character(0))
     updateSelectInput(inputId = "obs.counts", choices = choices_list, selected = character(0))
     updateSelectInput(inputId = "time", choices = choices_list, selected = character(0))
-    
+    updateSelectInput(inputId = "testlet.cens", choices = choices_list, selected = character(0))    
   }
   
   
@@ -1361,21 +1491,6 @@ server <- function(input, output, session) {
     #reset summary area
     output$fit.model.summary <- renderText({ "" })
     
-    # output$raw_data <- renderDataTable({
-    #   df
-    # })
-    # return (df[[1]]) for test
-    # if (input$est == "mcem") {
-    #   output$prep.data <- renderDataTable({
-    #     df[[1]]
-    #   })
-    # } else { # bayes
-    #   output$prep.data <- renderDataTable({
-    #     df
-    #   })
-    # }
-    
-    
     updateTabsetPanel(session, "fit.model.Tabset", selected = "Upload.Data") #Upload.Data
     return (df)
     
@@ -1385,19 +1500,26 @@ server <- function(input, output, session) {
   observeEvent(input$getPrepared.Btn, {
     values$LoadedPrepared_data <- load_preparedData()
     
-    # output$prep.data <- renderDataTable({
-    #   load_preparedData()[[1]]
-    # })
-    if (input$est == "mcem") {
+    if (input$TestletFlag == 1) { # testlet
       output$prep.data <- DT::renderDT({
         load_preparedData()[[1]]
-      })
-    } else { # bayes
-      output$prep.data <- DT::renderDT({
-        load_preparedData()
-      })
-      # get columns list
-      fit.model.updateList(load_preparedData())
+      })        
+    } else {
+    
+      # output$prep.data <- renderDataTable({
+      #   load_preparedData()[[1]]
+      # })
+      if (input$est == "mcem") {
+        output$prep.data <- DT::renderDT({
+          load_preparedData()[[1]]
+        })
+      } else { # bayes
+        output$prep.data <- DT::renderDT({
+          load_preparedData()
+        })
+        # get columns list
+        fit.model.updateList(load_preparedData())
+      }
     }
     
   })
@@ -1417,15 +1539,7 @@ server <- function(input, output, session) {
     #browser()
     # get data
     target.data <- NULL
-    # fit.model.result <- NULL # test
-    
-    # Validate input
-    # will do later
-    
-    # validate(
-    #   need(input$in1, 'Check at least one letter!'),
-    #   need(input$in2 != '', 'Please choose a state.')
-    # )
+
     
     if (input$fit_dat == "yes") { # Default to use prepared data
       target.data <- values$saveData
@@ -1447,9 +1561,9 @@ server <- function(input, output, session) {
       return()
     } else {
       
-      # print selected arguments
-      print(paste("Fit.Model Arguments:", input$est,input$k.in,
-                  input$rep.in,input$se,input$verbose))
+      # # print selected arguments
+      # print(paste("Fit.Model Arguments:", input$est,input$k.in,
+      #             input$rep.in,input$se,input$verbose))
       
       # update tabletpanel
       updateTabsetPanel(session, "fit.model.Tabset", selected = "View Model Fitting Summary") #fit.model.summary
@@ -1483,13 +1597,26 @@ server <- function(input, output, session) {
                 #   c(input$rep.in),
                 #   easyClose = TRUE
                 # ))
-                values$fit.model.result <- fit.model(data=target.data$data.wide,
-                                              person.data = target.data$data.long, #DO WE NEED THE PERSON DATA FOR CALIBRATION?
-                                              est = input$est,
-                                              verbose=input$verbose,
-                                              k.in = as.numeric(input$k.in),
-                                              reps.in = as.numeric(input$rep.in),
-                                              se=input$se)
+                if (input$TestletFlag == 0) {
+                  # print selected arguments
+                  print(paste("Fit.Model Arguments:", input$est,input$k.in,
+                              input$rep.in,input$se,input$verbose))
+                  
+                  values$fit.model.result <- fit.model(data=target.data,
+                                                       # person.data = target.data$data.long, #DO WE NEED THE PERSON DATA FOR CALIBRATION?
+                                                       # data = target.data$data.long, #DO WE NEED THE PERSON DATA FOR CALIBRATION?
+                                                       est = input$est,
+                                                       verbose=input$verbose,
+                                                       k.in = as.numeric(input$k.in),
+                                                       reps.in = as.numeric(input$rep.in),
+                                                       se=input$se)                 
+                } else { # with Testlet
+                  values$fit.model.result <- fit.model(data=target.data,
+                                                       # person.data = target.data$data.long, #DO WE NEED THE PERSON DATA FOR CALIBRATION?
+                                                       # data = target.data$data.long, #DO WE NEED THE PERSON DATA FOR CALIBRATION?
+                                                       testlet=TRUE)
+                }
+
                 
                 
               } else { #bayes
@@ -1500,7 +1627,8 @@ server <- function(input, output, session) {
                 # ))
                 #test
                 values$fit.model.result <- fit.model(#data=target.data$data.wide,
-                  person.data=target.data$data.long, #Corrected this part for bayes estimator..
+                  # person.data=target.data$data.long, #Corrected this part for bayes estimator..
+                  data=target.data$data.long, #Corrected this part for bayes estimator..
                   person.id = "person.id",
                   task.id = "task.id",
                   max.counts = "max.counts",
@@ -1596,7 +1724,7 @@ server <- function(input, output, session) {
       validate("Invalid file; Please upload a file with correct extension name")
     }
     
-    updateTabsetPanel(session, "TestletData.Tabset", selected = "View Testlet Data") # Tabset name, tabID
+    updateTabsetPanel(session, "testlet.fit.model.Tabset", selected = "View Uploaded Data") # Tabset name, tabID
     return (df)
     
   })
@@ -1621,7 +1749,7 @@ server <- function(input, output, session) {
     #   testlet.loaded_data
     # })
     updateTestletList(values$testlet.loaded_data)
-    output$testlet.data <- DT::renderDT({ # update testlet.data view
+    output$testlet.upload.data <- DT::renderDT({ # update testlet.upload.data view
       datatable(values$testlet.loaded_data)
     })
   })  #end observe testlet
@@ -1652,7 +1780,7 @@ server <- function(input, output, session) {
         return()
       }
       # update tabletpanel
-      updateTabsetPanel(session, "score.Tabset", selected = "View Testlet Fit") #tableset ID, tab title
+      updateTabsetPanel(session, "testlet.fit.model.Tabset", selected = "View Model Fitting Summary") #tableset ID, tab title
       
       # output$fit.model.summary <- renderText({ "" })
       values$testlet.fit.model.result <- NULL
@@ -1672,13 +1800,14 @@ server <- function(input, output, session) {
 
           if (i == 5) {
             if (length(values$testlet.fit.model.result) == 0) {
-              values$testlet.fit.model.result <- fit.model.testlet(data=values$testlet.loaded_data,
+              values$testlet.fit.model.result <- fit.model(data=values$testlet.loaded_data,
                                                             person.id=input$testlet.person.id, 
                                                             sub.task.id=input$testlet.sub.task.id,
                                                             obs.count=input$testlet.obs.counts,
                                                             time=input$testlet.time,
                                                             task.id=input$testlet.task.id, 
-                                                            max.counts = input$testlet.max.counts)
+                                                            max.counts = input$testlet.max.counts,
+                                                            testlet=TRUE)
             } else {
               break
             }
@@ -1713,7 +1842,7 @@ server <- function(input, output, session) {
       }
 
       # update tabletpanel
-      updateTabsetPanel(session, "score.Tabset", selected = "View Testlet Fit") # Tabset name, tabID
+      updateTabsetPanel(session, "testlet.fit.model.Tabset", selected = "View Model Fitting Summary") # Tabset name, tabID
      
       # print(values$testlet.fit.model.result)
       
@@ -1771,7 +1900,7 @@ server <- function(input, output, session) {
     
     # reset output area   
     values$testlet.loaded_data <- NULL
-    output$testlet.data <- DT::renderDT({ # update testlet.data view
+    output$testlet.upload.data <- DT::renderDT({ # update testlet.upload.data view
       datatable(values$testlet.loaded_data)
     })
     
@@ -1796,6 +1925,8 @@ server <- function(input, output, session) {
     }
   )
   
+  ##====================== Block for Testlet.scoring =============##
+  
   # -------------- runSPBtn 
   observeEvent(input$runSPBtn, {
     # print(values$censor.loaded_data)
@@ -1818,7 +1949,7 @@ server <- function(input, output, session) {
     } else {
       
       # update tabletpanel
-      updateTabsetPanel(session, "score.Tabset", selected = "View Scoring Passage") # Tabset name, tabID
+      updateTabsetPanel(session, "score.Tabset", selected = "View Scoring") # Tabset name, tabID
       
       # get censoring data
       Cens_sentence_level <- data.matrix(values$censor.loaded_data %>% 
@@ -1904,11 +2035,11 @@ server <- function(input, output, session) {
   ######=================== End --- action for Testlet ==================######
   
   
-  ######=================== action for score estimating ==================######
+  ######=================== action for score estimating ==================
 
-  ##====================== Block for load calib data =============##
+  ######====================== Block for load calib data =============
   
-  # show upload button of calib data
+  #==================== show upload button of calib data =======
   output$score.calib.resettableInput <- renderUI({
     
     fileInput(inputId = "calib.upload.prepared", NULL, multiple = FALSE)
@@ -1946,7 +2077,9 @@ server <- function(input, output, session) {
     })
   })  #end observe calib
   
-  ##====================== Block for load person data =============##
+  
+  ######====================== Block for load person data =============
+  
   # show upload button of person data
   output$score.person.resettableInput <- renderUI({
     
@@ -1982,9 +2115,17 @@ server <- function(input, output, session) {
     output$score.prep.data <- renderDataTable({
       score.person.loaded_data[[1]]
     })
+    # load columns name
+    scoring.updateList(score.person.loaded_data[[1]])
   })  #end observe person
   
-  ##====================== Block for case data ====================## 
+  ##============ update cens list ===========
+  scoring.updateList <- function(df) {
+    choices_list = colnames(df)
+    updateSelectInput(inputId = "scoring.testlet.cens", choices = choices_list, selected = character(0))
+  }
+  
+  ##====================== Block for case data ====================
   
   # load cases
   score.load.case.data <- reactive({
@@ -2051,7 +2192,7 @@ server <- function(input, output, session) {
     ))
   })  #end load external
   
-  # scoring button
+  ##========= scoring button ======
   observeEvent(input$score.Btn, {
     #browser()
     # get data
@@ -2059,6 +2200,15 @@ server <- function(input, output, session) {
     person.data <- NULL
     case.data <- NULL
     external.option <- NULL
+    censoring <- NULL
+    
+    # get censoring set
+    # if (input$radioCensP == 2 && input$scoring.telst.cens != "") {
+    if (input$radioCensP == 2) {  
+      censoring <- TRUE
+    } else {
+      censoring <- FALSE
+    }
     
     if (input$calibUseData == "1") { # Default to use prepared and fit.model data
       # print(fit.saved)
@@ -2070,7 +2220,12 @@ server <- function(input, output, session) {
     if (input$scoreUseData == "1") { # Default to use prepared and fit.model data
       # calib.data <- fit.saved
       if (class(values$LoadedPrepared_data)[[1]] == "list") { # PREPARED DATA
-        person.data <- values$LoadedPrepared_data[[1]]
+        if (censoring && input$TestletFlag == 0) { # Passage and censoring
+          person.data <- values$LoadedPrepared_data
+        } else {
+          person.data <- values$LoadedPrepared_data[[1]]          
+        }
+
         # showModal(modalDialog(
         #   title = "Default",
         #   print("here and get person.data"),
@@ -2078,11 +2233,20 @@ server <- function(input, output, session) {
         # ))
       } else {
         #print(saveData)
-        person.data <- values$saveData$data.long
+        if (censoring && input$TestletFlag == 0) { # Passage and censoring
+          person.data <- values$saveData
+        } else {
+          person.data <- values$saveData$data.long       
+        }
       }
     } else { # when "2",
       # upload person data
-      person.data <- score.person.loaded_data[[1]]      
+      if (censoring && input$TestletFlag == 0) { # Passage and censoring
+        person.data <- score.person.loaded_data      
+      } else {
+        person.data <- score.person.loaded_data[[1]]        
+      }
+
     }
     
     # for test 
@@ -2133,10 +2297,10 @@ server <- function(input, output, session) {
         return()
       }
       
-      # print selected arguments
-      print(paste("Scoring Arguments:", input$scoreEst,input$score.failsafe,
-                  input$score.bootstrap,input$scoreSe,input$score.type, 
-                  input$scoreCases, "external=", input$scoreExtOption))
+      # # print selected arguments
+      # print(paste("Scoring Arguments:", input$scoreEst,input$score.failsafe,
+      #             input$score.bootstrap,input$scoreSe,input$score.type, 
+      #             input$scoreCases, "external=", input$scoreExtOption))
       
       # update tabletpanel
       updateTabsetPanel(session, "score.Tabset", selected = "View Scoring Summary")
@@ -2165,8 +2329,13 @@ server <- function(input, output, session) {
           if (i == 5) {
             if (length(values$score.result) == 0) {
               if (input$scoreEst == "bayes") { # bayes
+                # print selected arguments
+                print(paste("Scoring Arguments:", input$scoreEst,input$score.failsafe,
+                            input$score.bootstrap,input$scoreSe,input$score.type, 
+                            input$scoreCases, "external=", input$scoreExtOption))
                 values$score.result <- scoring(calib.data = calib.data,
-                                        person.data = person.data, # person.data$data.long,
+                                        data = person.data, # person.data$data.long,
+                                        # person.data = person.data, # person.data$data.long,                                        
                                         est = input$scoreEst,
                                         se=input$scoreSe,
                                         type = input$score.type,
@@ -2176,18 +2345,59 @@ server <- function(input, output, session) {
                 )
                 
               } else { # the others
- 
-                  values$score.result <- scoring(calib.data=calib.data,
-                                          person.data = person.data, # person.data$data.long,
-                                          est = input$scoreEst,
-                                          failsafe = as.numeric(input$score.failsafe),
-                                          bootstrap = as.numeric(input$score.bootstrap),
-                                          se=input$scoreSe,
-                                          type = input$score.type,
-                                          cases = case.data,
-                                          external = external.option
+
+                
+                if (input$TestletFlag == 0) { # for task level
+                  # print selected arguments
+                  print(paste("Scoring Arguments:", input$scoreEst,input$score.failsafe,
+                              input$score.bootstrap,input$scoreSe,input$score.type, 
+                              input$scoreCases, "external=", input$scoreExtOption, "censoring=", censoring))
+                  if (censoring) { # with censoring
+                    values$score.result <- scoring(calib.data=calib.data,
+                                                   # person.data = person.data, # person.data$data.long,
+                                                   data = person.data, # person.data,                                        
+                                                   est = input$scoreEst,
+                                                   failsafe = as.numeric(input$score.failsafe),
+                                                   bootstrap = as.numeric(input$score.bootstrap),
+                                                   se=input$scoreSe,
+                                                   type = input$score.type,
+                                                   cases = case.data,
+                                                   external = external.option,
+                                                   censoring = TRUE)  
+                    # when censoring, hide plot_person_panel
+                    shinyjs::hide("plot2")
+                    hideTab(inputId = "visual.Tabset", target = "Plot.Person")
+                  } else { # without censoring
+                    values$score.result <- scoring(calib.data=calib.data,
+                                                   # person.data = person.data, # person.data$data.long,
+                                                   data = person.data, # person.data$data.long,                                        
+                                                   est = input$scoreEst,
+                                                   failsafe = as.numeric(input$score.failsafe),
+                                                   bootstrap = as.numeric(input$score.bootstrap),
+                                                   se=input$scoreSe,
+                                                   type = input$score.type,
+                                                   cases = case.data,
+                                                   external = external.option)   
+                    showTab(inputId = "visual.Tabset", target = "Plot.Person")
+                    shinyjs::show("plot2")     
+                  }
+
+                } else { # for testlet always with censoring
+                  values$score.result <- scoring(calib.data=calib.data, 
+                                            data = person.data,
+                                            person.id = "person.id",
+                                            task.id = "task.id",
+                                            sub.task.id = "sub.task.id",
+                                            max.counts = "max.counts",
+                                            obs.counts = "obs.counts",
+                                            time = "time",
+                                            cens = "cens",
+                                            censoring = TRUE,
+                                            testlet = TRUE
+                                        )
+                }
                                           
-                  )                  
+                                    
               }
 
               values$score.saved <- values$score.result
@@ -2210,20 +2420,22 @@ server <- function(input, output, session) {
       # try dataTable
       output$score.summary <- renderDataTable({
         if (length(values$score.result)[[1]] != 0) {
-          if (class(values$score.result)[1] != "scoring") { # for bootstrap
+          if (class(values$score.result)[1] == "bootstrap") { # for bootstrap
             temp.result <- as.data.frame(values$score.result %>% summary())
             max_col <- dim(temp.result)[2] # the number of columns                             
             result <- cbind(temp.result[,1:6],as.data.frame(lapply(temp.result[,7:max_col],
                                                                  sprintf, fmt = "%6.3f"))) 
             colnames(result) <- colnames(temp.result)
             result
-          } else {
+          } else if (class(values$score.result)[1] == "scoring") { # for scoring
             temp.result <- as.data.frame(values$score.result %>% summary(show = "short"))  
             max_col <- dim(temp.result)[2] # the number of columns                             
             result <- cbind(temp.result[,1],as.data.frame(lapply(temp.result[,2:max_col],
                                                                  sprintf, fmt = "%6.3f"))) 
             colnames(result) <- colnames(temp.result)
             result
+          } else {
+            as.data.frame(lapply(as.data.frame(do.call(cbind, values$score.result)), sprintf, fmt = "%6.3f"))
           }
 
         }
@@ -2382,6 +2594,15 @@ server <- function(input, output, session) {
     }
     
     if (!is.null(calib.data)) {
+      # check
+      if (length(input$plotTaskParameter) == 0) { # no select
+        showModal(modalDialog(
+          title = "Error-plotting",
+          "Please select at least one parameter for plotting!",
+          easyClose = TRUE
+        ))   
+        return()
+      }
       # get input parameters
       inputParam <- strsplit(input$plotTaskParameter,split=" ") #list
       
