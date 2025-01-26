@@ -1,13 +1,3 @@
-# library(miscTools)
-# library(sjmisc)
-# library(plyr)
-# library(MASS)
-# library(Matrix)
-# library(mvtnorm)
-# library(foreach)
-# library(nleqslv)
-# library(fastGHQuad)
-# library(doParallel)
 
 library(shiny)
 library(shinyjs)
@@ -19,16 +9,6 @@ library(plotly)
 library(DT)
 library(bslib)
 library(shinyWidgets)
-#library(runjags)
-
-# check JAGS env
-# This is for running JAGS on M2
-# findjags <- findjags()
-# if (findjags == "JAGS not found") {
-#   # need to set path to find JAGS
-#   runjags::runjags.options(jagspath="/hpc/applications/jags/4.3.0/gcc-6.3.0/bin/jags")
-# } # end
-
 
 ############################################################################################################
 ##                                  USER INTERFACE SECTION                                             
