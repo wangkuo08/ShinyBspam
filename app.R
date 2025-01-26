@@ -1,3 +1,14 @@
+# library(miscTools)
+# library(sjmisc)
+# library(plyr)
+# library(MASS)
+# library(Matrix)
+# library(mvtnorm)
+# library(foreach)
+# library(nleqslv)
+# library(fastGHQuad)
+# library(doParallel)
+
 library(shiny)
 library(shinyjs)
 library(shinythemes)
@@ -334,6 +345,12 @@ ui <- fluidPage(
                                                            
                                           ),
                                           br(),
+                                          # For plot information
+                                          # h6(HTML("<b> Please set theta and tau for information plot: </b>")),
+                                          # sliderInput(inputId = "theta.information", label = "theta:", value = c(5), min = -3, max = +3),
+                                          # sliderInput(inputId = "tau.information", label = "tau:", value = c(2), min = -1, max = +1),
+                                          actionButton(inputId = "plot.information.Btn", label = "Plot.Information", icon = icon("chart-line")),
+                                          br(),
                                           h6(HTML("<b> Only two parameters can be visualized at a time! </b>")),
                                           checkboxGroupInput("plotTaskParameter", "Select parameter:",
                                                              c("a" = "a",
@@ -377,6 +394,7 @@ ui <- fluidPage(
                   ), 
                   mainPanel(
                     tabsetPanel(id = "visual.Tabset",
+                                tabPanel("Plot.Information", plotlyOutput("visual.information")),
                                 tabPanel("Plot.Task", plotlyOutput("visual.task")),
                                 tabPanel("Plot.Person", plotlyOutput("visual.person")),
                     )
@@ -451,7 +469,10 @@ server <- function(input, output, session) {
       
       # hide plot_person_panel
       shinyjs::hide("plot2")
+      # shinyjs::disable("plot.information.Btn")
+      shinyjs::hide("plot.information.Btn")
       hideTab(inputId = "visual.Tabset", target = "Plot.Person")
+      hideTab(inputId = "visual.Tabset", target = "Plot.Information")
       
       removeTab(inputId = "bspam", target = "Data Preparation") #
       removeTab(inputId = "bspam", target = "Model Fitting") #
@@ -669,7 +690,19 @@ server <- function(input, output, session) {
                                                      condition = "input.scoreUseData == '2'",
                                                      uiOutput('score.person.resettableInput'),
                                                      actionButton(inputId = "score.getPrepared.Btn", label = "Load Person data"),
-                                                   )
+                                                   ),
+                                                   h6(HTML("<b> Do your task data involve censoring? </b>")),
+                                                   # checkboxInput(inputId = "useCens", label = "Use Censoring", value = FALSE),
+                                                   radioButtons(inputId = "radioCensTestlet",label="", inline = FALSE,
+                                                                c("No" = "1",
+                                                                  "Yes" = "2")),
+                                                   ##=== Check if using censoring
+                                                   # conditionalPanel(
+                                                   #   condition = "input.radioCensP == '2'",
+                                                   #   h6(HTML("<b> Please specify your censoring column: </b>")),
+                                                   #   selectInput(inputId = "scoring.testlet.cens",
+                                                   #               label = "cens*", choices = NULL),
+                                                   # )
                                                    ),
 
                                                  wellPanel(
@@ -720,6 +753,9 @@ server <- function(input, output, session) {
 
       showTab(inputId = "visual.Tabset", target = "Plot.Person")
       shinyjs::show("plot2")     
+      shinyjs::show("plot.information.Btn")
+      showTab(inputId = "visual.Tabset", target = "Plot.Information")
+      
       # remove  
       removeTab(inputId = "bspam", target = "Data Preparation") #
       removeTab(inputId = "bspam", target = "Model Fitting") #
@@ -1180,6 +1216,8 @@ server <- function(input, output, session) {
     updateSliderInput(session,inputId = "score.bootstrap", value = c(100))
     updateRadioButtons(session, "scoreCases", selected = "default")    
     
+    updateSelectInput(session, inputId = "radioCensTestlet", selected = "1")
+    updateSelectInput(session, inputId = "radioCensP", selected = "1")
     # reset output area
     output$calib.data <- renderText({
       ""
@@ -1200,7 +1238,12 @@ server <- function(input, output, session) {
     updateCheckboxGroupInput(session, "plotTaskParameter", selected = "")
     
     # reset output
+    values$Vcalib.loaded.Data <- NULL
+    values$fit.saved <- NULL
+    values$score.calib.loaded_data <- NULL           
+    
     output$visual.task <- renderPlotly({ NULL })
+    output$visual.information <- renderPlotly({ NULL })
     output$visual.person <- renderPlotly({ NULL })
     updateTabsetPanel(session, "visual.Tabset", selected = "Plot.Task")
   }
@@ -1488,6 +1531,29 @@ server <- function(input, output, session) {
       validate("Invalid file; Please upload a file with correct extension name")
     }
     
+    # check
+    if (input$TestletFlag == 1) { # testlet
+      # check prepared data class
+      if (class(df) != "prepared.sub.task") {
+        showModal(modalDialog(
+          title = "Error",
+          "Please upload a correct prepared data!",
+          easyClose = TRUE
+        ))
+        return()
+      }
+    } else {
+      # check prepared data class
+      if (class(df) != "prepared.task") {
+        showModal(modalDialog(
+          title = "Error",
+          "Please upload a correct prepared data!",
+          easyClose = TRUE
+        ))
+        return()
+      }
+    }
+      
     #reset summary area
     output$fit.model.summary <- renderText({ "" })
     
@@ -1501,11 +1567,28 @@ server <- function(input, output, session) {
     values$LoadedPrepared_data <- load_preparedData()
     
     if (input$TestletFlag == 1) { # testlet
+      # check prepared data class
+      if (class(values$LoadedPrepared_data) != "prepared.sub.task") {
+        showModal(modalDialog(
+          title = "Error",
+          "Please upload a correct prepared data!",
+          easyClose = TRUE
+        ))
+        return()
+      }
       output$prep.data <- DT::renderDT({
         load_preparedData()[[1]]
       })        
     } else {
-    
+      # check prepared data class
+      if (class(values$LoadedPrepared_data) != "prepared.task") {
+        showModal(modalDialog(
+          title = "Error",
+          "Please upload a correct prepared data!",
+          easyClose = TRUE
+        ))
+        return()
+      }
       # output$prep.data <- renderDataTable({
       #   load_preparedData()[[1]]
       # })
@@ -2070,8 +2153,32 @@ server <- function(input, output, session) {
   
   # load calib data button
   observeEvent(input$calib_load.Btn, {
-    values$score.calib.loaded_data <- score.load.calib.Data()
-
+    load.calib.data <- score.load.calib.Data()
+    # Check upload data class
+    if (input$TestletFlag == 1) { # testlet
+      # check calib data class
+      if (class(load.calib.data) != "fit.model.testlet") {
+        showModal(modalDialog(
+          title = "Error",
+          "Please upload a correct calib data of testlet!",
+          easyClose = TRUE
+        ))
+        return()
+      }
+    } else {
+      # check prepared data class
+      if (class(load.calib.data) != "fit.model") {
+        showModal(modalDialog(
+          title = "Error",
+          "Please upload a correct calib data!",
+          easyClose = TRUE
+        ))
+        return()
+      }     
+    }
+    
+    values$score.calib.loaded_data <- load.calib.data
+    
     output$calib.data <- renderPrint({
       values$score.calib.loaded_data %>% summary()
     })
@@ -2104,6 +2211,29 @@ server <- function(input, output, session) {
       validate("Invalid file; Please upload a file with correct extension name")
     }
     
+    # check
+    if (input$TestletFlag == 1) { # testlet
+      # check prepared data class
+      if (class(df) != "prepared.sub.task") {
+        showModal(modalDialog(
+          title = "Error",
+          "Please upload a correct prepared data!",
+          easyClose = TRUE
+        ))
+        return()
+      }
+    } else {
+      # check prepared data class
+      if (class(df) != "prepared.task") {
+        showModal(modalDialog(
+          title = "Error",
+          "Please upload a correct prepared data!",
+          easyClose = TRUE
+        ))
+        return()
+      }
+    }
+    
     updateTabsetPanel(session, "score.Tabset", selected = "View Uploaded Person Data") # Tabset name, tabID
     return (df)
     
@@ -2112,6 +2242,34 @@ server <- function(input, output, session) {
   # load person data button
   observeEvent(input$score.getPrepared.Btn, {
     score.person.loaded_data <<- score.load.person.Data()
+    if (input$TestletFlag == 1) { # testlet
+      # check prepared data class
+      if (class(score.person.loaded_data) != "prepared.sub.task") {
+        showModal(modalDialog(
+          title = "Error",
+          "Please upload a correct prepared data!",
+          easyClose = TRUE
+        ))
+        output$score.prep.data <- renderDataTable({
+          NULL
+        })
+        return()
+      }
+    } else {
+      # check prepared data class
+      if (class(score.person.loaded_data) != "prepared.task") {
+        showModal(modalDialog(
+          title = "Error",
+          "Please upload a correct prepared data!",
+          easyClose = TRUE
+        ))
+        output$score.prep.data <- renderDataTable({
+          NULL
+        })
+        return()
+      }     
+    }
+    
     output$score.prep.data <- renderDataTable({
       score.person.loaded_data[[1]]
     })
@@ -2192,7 +2350,7 @@ server <- function(input, output, session) {
     ))
   })  #end load external
   
-  ##========= scoring button ======
+  ##========= scoring button for Testlet or task level ======
   observeEvent(input$score.Btn, {
     #browser()
     # get data
@@ -2234,9 +2392,18 @@ server <- function(input, output, session) {
       } else {
         #print(saveData)
         if (censoring && input$TestletFlag == 0) { # Passage and censoring
-          person.data <- values$saveData
+          if (!is.null(values$saveData)) {
+            person.data <- values$saveData
+          } else {
+            person.data <- values$LoadedPrepared_data
+          }
         } else {
-          person.data <- values$saveData$data.long       
+          if (!is.null(values$saveData)) {
+            person.data <- values$saveData$data.long    
+          } else {
+            person.data <- values$LoadedPrepared_data$data.long   
+          }
+   
         }
       }
     } else { # when "2",
@@ -2382,7 +2549,10 @@ server <- function(input, output, session) {
                     shinyjs::show("plot2")     
                   }
 
-                } else { # for testlet always with censoring
+                } else {
+                  if (input$radioCensTestlet == 1) { # with user selected no censoring
+                    person.data$cens <- 0 # set cens to 0  
+                  }
                   values$score.result <- scoring(calib.data=calib.data, 
                                             data = person.data,
                                             person.id = "person.id",
@@ -2540,7 +2710,31 @@ server <- function(input, output, session) {
   
   # load Vcalib data button
   observeEvent(input$Vcalib_load.Btn, {
-    values$Vcalib.loaded.Data <- Vload.calib.Data()
+    
+    loaded.data <- Vload.calib.Data()
+    # Check upload data class
+    if (input$TestletFlag == 1) { # testlet
+      # check calib data class
+      if (class(loaded.data) != "fit.model.testlet") {
+        showModal(modalDialog(
+          title = "Error",
+          "Please upload a correct calib data of testlet!",
+          easyClose = TRUE
+        ))
+        return()
+      }
+    } else {
+      # check prepared data class
+      if (class(loaded.data) != "fit.model") {
+        showModal(modalDialog(
+          title = "Error",
+          "Please upload a correct calib data!",
+          easyClose = TRUE
+        ))
+        return()
+      }     
+    }
+    values$Vcalib.loaded.Data <- loaded.data
     
   })  #end observe Vcalib
   
@@ -2578,7 +2772,69 @@ server <- function(input, output, session) {
     values$Vscore.loaded.Data <- Vscore.load.Data()
   })
   
-  # plot.task button
+  ##---------- plot.information button -------
+  observeEvent(input$plot.information.Btn, {
+    
+    infor_result <- NULL
+    # check data
+    if (input$VcalibUseData == "1") { # Default to use fit.model data in prior process
+      if (!is.null(values$fit.saved)) { # if saved fit.model data
+        calib.data <- values$fit.saved        
+      } else { # else
+        calib.data <- values$score.calib.loaded_data           
+      }
+      
+      
+    } else { # when "2", upload Vcalib data
+      calib.data <- values$Vcalib.loaded.Data
+    }
+    
+    if (!is.null(calib.data)) { #values$Vcalib.loaded.Data
+      
+      withProgress(message = 'Running Information', value = 0, {
+        
+        #   # Number of times we'll go through the loop
+        n <- 10
+        #
+        for (i in 1:n) {
+          
+
+          # if (i > 5) {
+          #   Sys.sleep(0.2)   
+          #   incProgress(1/n, detail = "Please Wait...")
+          # } 
+          if (i == 2) {
+              if (is.null(infor_result)) {
+                output$visual.information <- renderPlotly({
+                  infor_result <- plot.information(calib_data=calib.data)
+                })                
+              } else {
+                break
+              }
+          } else {
+            # Increment the progress bar, and update the detail text.
+            Sys.sleep(0.2) 
+            incProgress(1/n, detail = "Please Wait...")
+          }
+        }
+          
+      })
+        
+      # output$visual.information <- renderPlotly({
+      #   information_func(calib_data=values$Vcalib.loaded.Data)
+      # })
+      updateTabsetPanel(session, "visual.Tabset", selected = "Plot.Information") # show plot.information
+      
+    } else {
+      showModal(modalDialog(
+        title = "Error-plotting",
+        "Please select correct calibration data!",
+        easyClose = TRUE
+      ))   
+    }
+  })
+  
+  #---------- plot.task button -------
   observeEvent(input$plot.task.Btn, {
     # check data
     if (input$VcalibUseData == "1") { # Default to use fit.model data in prior process
@@ -2642,7 +2898,7 @@ server <- function(input, output, session) {
     }
   })
   
-  # plot.person button
+  #---------- plot.person button -------
   observeEvent(input$plot.person.Btn, {
     
     Vscore.data <- NULL
