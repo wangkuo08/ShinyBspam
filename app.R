@@ -1639,78 +1639,93 @@ server <- function(input, output, session) {
       # #Create 0-row data frame which will be used to store data
       dat <- data.frame(x = numeric(0), y = numeric(0))
       
-      withProgress(message = 'Running Model Fitting.', detail = 'This may take a while...', value = 0, {
-        
-        #   # Number of times we'll go through the loop
-        n <- 10
-        #
-        for (i in 1:n) {
+      tryCatch({
+        withProgress(message = 'Running Model Fitting.', detail = 'This may take a while...', value = 0, {
           
-          # Increment the progress bar, and update the detail text.
-          incProgress(1/n, detail = "Please Wait...")
-          if (i > 5) {
-            Sys.sleep(0.2)   
+          #   # Number of times we'll go through the loop
+          n <- 10
+          #
+          for (i in 1:n) {
+            
+            # Increment the progress bar, and update the detail text.
             incProgress(1/n, detail = "Please Wait...")
-          }
-          if (i == 5) {
-            if (length(values$fit.model.result) == 0) {
-              if (input$est == "mcem") { # mcem
-                # showModal(modalDialog( # for debug
-                #   title = "good",
-                #   c(input$rep.in),
-                #   easyClose = TRUE
-                # ))
-                if (input$TestletFlag == 0) {
-                  # print selected arguments
-                  print(paste("Fit.Model Arguments:", input$est,input$k.in,
-                              input$rep.in,input$se,input$verbose))
-                  
-                  values$fit.model.result <- fit.model(data=target.data,
-                                                       # person.data = target.data$data.long, #DO WE NEED THE PERSON DATA FOR CALIBRATION?
-                                                       # data = target.data$data.long, #DO WE NEED THE PERSON DATA FOR CALIBRATION?
-                                                       est = input$est,
-                                                       verbose=input$verbose,
-                                                       k.in = as.numeric(input$k.in),
-                                                       reps.in = as.numeric(input$rep.in),
-                                                       se=input$se)                 
-                } else { # with Testlet
-                  values$fit.model.result <- fit.model(data=target.data,
-                                                       # person.data = target.data$data.long, #DO WE NEED THE PERSON DATA FOR CALIBRATION?
-                                                       # data = target.data$data.long, #DO WE NEED THE PERSON DATA FOR CALIBRATION?
-                                                       testlet=TRUE)
-                }
-
-                
-                
-              } else { #bayes
-                # showModal(modalDialog( # for debug
-                #   title = "good",
-                #  "bayes",
-                #   easyClose = TRUE
-                # ))
-                #test
-                values$fit.model.result <- fit.model(#data=target.data$data.wide,
-                  # person.data=target.data$data.long, #Corrected this part for bayes estimator..
-                  data=target.data$data.long, #Corrected this part for bayes estimator..
-                  person.id = "person.id",
-                  task.id = "task.id",
-                  max.counts = "max.counts",
-                  obs.counts = "obs.counts",
-                  time = "time",
-                  est = "bayes")
-              }
-              
-              values$fit.saved <- values$fit.model.result
-            } else {
-              break
+            if (i > 5) {
+              Sys.sleep(0.2)   
+              incProgress(1/n, detail = "Please Wait...")
             }
+            if (i == 5) {
+              if (length(values$fit.model.result) == 0) {
+                if (input$est == "mcem") { # mcem
+                  # showModal(modalDialog( # for debug
+                  #   title = "good",
+                  #   c(input$rep.in),
+                  #   easyClose = TRUE
+                  # ))
+                  if (input$TestletFlag == 0) {
+                    # print selected arguments
+                    print(paste("Fit.Model Arguments:", input$est,input$k.in,
+                                input$rep.in,input$se,input$verbose))
+                    
+                    values$fit.model.result <- fit.model(data=target.data,
+                                                         # person.data = target.data$data.long, #DO WE NEED THE PERSON DATA FOR CALIBRATION?
+                                                         # data = target.data$data.long, #DO WE NEED THE PERSON DATA FOR CALIBRATION?
+                                                         est = input$est,
+                                                         verbose=input$verbose,
+                                                         k.in = as.numeric(input$k.in),
+                                                         reps.in = as.numeric(input$rep.in),
+                                                         se=input$se)                 
+                  } else { # with Testlet
+                    values$fit.model.result <- fit.model(data=target.data,
+                                                         # person.data = target.data$data.long, #DO WE NEED THE PERSON DATA FOR CALIBRATION?
+                                                         # data = target.data$data.long, #DO WE NEED THE PERSON DATA FOR CALIBRATION?
+                                                         testlet=TRUE)
+                  }
+  
+                  
+                  
+                } else { #bayes
+                  # showModal(modalDialog( # for debug
+                  #   title = "good",
+                  #  "bayes",
+                  #   easyClose = TRUE
+                  # ))
+                  #test
+                  values$fit.model.result <- fit.model(#data=target.data$data.wide,
+                    # person.data=target.data$data.long, #Corrected this part for bayes estimator..
+                    data=target.data$data.long, #Corrected this part for bayes estimator..
+                    person.id = "person.id",
+                    task.id = "task.id",
+                    max.counts = "max.counts",
+                    obs.counts = "obs.counts",
+                    time = "time",
+                    est = "bayes")
+                }
+                
+                values$fit.saved <- values$fit.model.result
+              } else {
+                break
+              }
+            }
+            
           }
-          
-        }
-      })
-      
-      output$fit.model.summary <- renderPrint({
-        values$fit.model.result %>% summary()
+        })
+        
+        output$fit.model.summary <- renderPrint({
+          values$fit.model.result %>% summary()
+        })
+        
+      }, error=function(e) {
+        showModal(modalDialog(
+          title = "Error",
+          paste0("Please check your data! Running with error: ", e), 
+          easyClose = TRUE
+        ))
+      }, warning=function(w) {
+        showModal(modalDialog(
+          title = "Warning",
+          paste0("Please check your data! Running with warning: ", e),
+          easyClose = TRUE
+        ))
       })
       
     }
@@ -2459,105 +2474,119 @@ server <- function(input, output, session) {
       # #Create 0-row data frame which will be used to store data
       dat <- data.frame(x = numeric(0), y = numeric(0))
       
-      withProgress(message = 'Running Score Estimating.', value = 0, {
-        
-        #   # Number of times we'll go through the loop
-        n <- 10
-        #
-        for (i in 1:n) {
+      tryCatch({
+        withProgress(message = 'Running Score Estimating.', value = 0, {
           
-          # Increment the progress bar, and update the detail text.
-          incProgress(1/n, detail = "Please Wait...")
-          if (i > 5) {
-            Sys.sleep(0.2)   
+          #   # Number of times we'll go through the loop
+          n <- 10
+          #
+          for (i in 1:n) {
+            
+            # Increment the progress bar, and update the detail text.
             incProgress(1/n, detail = "Please Wait...")
-          }
-          
-          if (i == 5) {
-            if (length(values$score.result) == 0) {
-              if (input$scoreEst == "bayes") { # bayes
-                # print selected arguments
-                print(paste("Scoring Arguments:", input$scoreEst,input$score.failsafe,
-                            input$score.bootstrap,input$scoreSe,input$score.type, 
-                            input$scoreCases, "external=", input$scoreExtOption))
-                values$score.result <- scoring(calib.data = calib.data,
-                                        data = person.data, # person.data$data.long,
-                                        # person.data = person.data, # person.data$data.long,                                        
-                                        est = input$scoreEst,
-                                        se=input$scoreSe,
-                                        type = input$score.type,
-                                        cases = case.data,
-                                        external = external.option
-                                        
-                )
-                
-              } else { # the others
-
-                
-                if (input$TestletFlag == 0) { # for task level
+            if (i > 5) {
+              Sys.sleep(0.2)   
+              incProgress(1/n, detail = "Please Wait...")
+            }
+            
+            if (i == 5) {
+              if (length(values$score.result) == 0) {
+                if (input$scoreEst == "bayes") { # bayes
                   # print selected arguments
                   print(paste("Scoring Arguments:", input$scoreEst,input$score.failsafe,
                               input$score.bootstrap,input$scoreSe,input$score.type, 
-                              input$scoreCases, "external=", input$scoreExtOption, "censoring=", censoring))
-                  if (censoring) { # with censoring
-                    values$score.result <- scoring(calib.data=calib.data,
-                                                   # person.data = person.data, # person.data$data.long,
-                                                   data = person.data, # person.data,                                        
-                                                   est = input$scoreEst,
-                                                   failsafe = as.numeric(input$score.failsafe),
-                                                   bootstrap = as.numeric(input$score.bootstrap),
-                                                   se=input$scoreSe,
-                                                   type = input$score.type,
-                                                   cases = case.data,
-                                                   external = external.option,
-                                                   censoring = TRUE)  
-                    # when censoring, hide plot_person_panel
-                    shinyjs::hide("plot2")
-                    hideTab(inputId = "visual.Tabset", target = "Plot.Person")
-                  } else { # without censoring
-                    values$score.result <- scoring(calib.data=calib.data,
-                                                   # person.data = person.data, # person.data$data.long,
-                                                   data = person.data, # person.data$data.long,                                        
-                                                   est = input$scoreEst,
-                                                   failsafe = as.numeric(input$score.failsafe),
-                                                   bootstrap = as.numeric(input$score.bootstrap),
-                                                   se=input$scoreSe,
-                                                   type = input$score.type,
-                                                   cases = case.data,
-                                                   external = external.option)   
-                    showTab(inputId = "visual.Tabset", target = "Plot.Person")
-                    shinyjs::show("plot2")     
-                  }
-
-                } else {
-                  if (input$radioCensTestlet == 1) { # with user selected no censoring
-                    person.data$cens <- 0 # set cens to 0  
-                  }
-                  values$score.result <- scoring(calib.data=calib.data, 
-                                            data = person.data,
-                                            person.id = "person.id",
-                                            task.id = "task.id",
-                                            sub.task.id = "sub.task.id",
-                                            max.counts = "max.counts",
-                                            obs.counts = "obs.counts",
-                                            time = "time",
-                                            cens = "cens",
-                                            censoring = TRUE,
-                                            testlet = TRUE
-                                        )
-                }
+                              input$scoreCases, "external=", input$scoreExtOption))
+                  values$score.result <- scoring(calib.data = calib.data,
+                                          data = person.data, # person.data$data.long,
+                                          # person.data = person.data, # person.data$data.long,                                        
+                                          est = input$scoreEst,
+                                          se=input$scoreSe,
+                                          type = input$score.type,
+                                          cases = case.data,
+                                          external = external.option
                                           
-                                    
+                  )
+                  
+                } else { # the others
+  
+                  
+                  if (input$TestletFlag == 0) { # for task level
+                    # print selected arguments
+                    print(paste("Scoring Arguments:", input$scoreEst,input$score.failsafe,
+                                input$score.bootstrap,input$scoreSe,input$score.type, 
+                                input$scoreCases, "external=", input$scoreExtOption, "censoring=", censoring))
+                    if (censoring) { # with censoring
+                      values$score.result <- scoring(calib.data=calib.data,
+                                                     # person.data = person.data, # person.data$data.long,
+                                                     data = person.data, # person.data,                                        
+                                                     est = input$scoreEst,
+                                                     failsafe = as.numeric(input$score.failsafe),
+                                                     bootstrap = as.numeric(input$score.bootstrap),
+                                                     se=input$scoreSe,
+                                                     type = input$score.type,
+                                                     cases = case.data,
+                                                     external = external.option,
+                                                     censoring = TRUE)  
+                      # when censoring, hide plot_person_panel
+                      shinyjs::hide("plot2")
+                      hideTab(inputId = "visual.Tabset", target = "Plot.Person")
+                    } else { # without censoring
+                      values$score.result <- scoring(calib.data=calib.data,
+                                                     # person.data = person.data, # person.data$data.long,
+                                                     data = person.data, # person.data$data.long,                                        
+                                                     est = input$scoreEst,
+                                                     failsafe = as.numeric(input$score.failsafe),
+                                                     bootstrap = as.numeric(input$score.bootstrap),
+                                                     se=input$scoreSe,
+                                                     type = input$score.type,
+                                                     cases = case.data,
+                                                     external = external.option)   
+                      showTab(inputId = "visual.Tabset", target = "Plot.Person")
+                      shinyjs::show("plot2")     
+                    }
+  
+                  } else {
+                    if (input$radioCensTestlet == 1) { # with user selected no censoring
+                      person.data$cens <- 0 # set cens to 0  
+                    }
+                    values$score.result <- scoring(calib.data=calib.data, 
+                                              data = person.data,
+                                              person.id = "person.id",
+                                              task.id = "task.id",
+                                              sub.task.id = "sub.task.id",
+                                              max.counts = "max.counts",
+                                              obs.counts = "obs.counts",
+                                              time = "time",
+                                              cens = "cens",
+                                              censoring = TRUE,
+                                              testlet = TRUE
+                                          )
+                  }
+                                            
+                                      
+                }
+  
+                values$score.saved <- values$score.result
+              } else {
+                break
               }
-
-              values$score.saved <- values$score.result
-            } else {
-              break
             }
+            
           }
-          
-        }
-      })
+        })
+      }, error=function(e) {
+        showModal(modalDialog(
+          title = "Error",
+          paste0("Please check your data! Running with error: ", e), 
+          easyClose = TRUE
+        ))
+      }, warning=function(w) {
+        showModal(modalDialog(
+          title = "Warning",
+          paste0("Please check your data! Running with warning: ", e),
+          easyClose = TRUE
+        ))
+      })  
       
       # output$score.summary <- renderPrint({
       #   if (class(score.result)[1] != "scoring") { # for bootstrap
