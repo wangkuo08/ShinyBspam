@@ -364,7 +364,7 @@ ui <- fluidPage(
                                                                "tau" = "tau",
                                                                "wcpm" = "wcpm")),
                                           HTML("Show and Sort condition:"),
-                                          checkboxInput(inputId = "plotPersonShowSE", label = "Show SE", value = FALSE),
+                                          checkboxInput(inputId = "plotPersonShowSE", label = "Show SE", value = TRUE),
                                           checkboxInput(inputId = "plotPersonSort", label = "Sort", value = FALSE),
                                           textInput(inputId = "plotPersonid", label = "Input person id:", value = ""),
                                           actionButton(inputId = "plot.person.Btn", label = "Plot.Person", icon = icon("chart-line")),
@@ -1723,7 +1723,7 @@ server <- function(input, output, session) {
       }, warning=function(w) {
         showModal(modalDialog(
           title = "Warning",
-          paste0("Please check your data! Running with warning: ", e),
+          paste0("Please check your data! Running with warning: ", w),
           easyClose = TRUE
         ))
       })
@@ -2583,7 +2583,7 @@ server <- function(input, output, session) {
       }, warning=function(w) {
         showModal(modalDialog(
           title = "Warning",
-          paste0("Please check your data! Running with warning: ", e),
+          paste0("Please check your data! Running with warning: ", w),
           easyClose = TRUE
         ))
       })  
@@ -2911,6 +2911,8 @@ server <- function(input, output, session) {
   observeEvent(input$plot.person.Btn, {
     
     Vscore.data <- NULL
+    plot.obj <- NULL
+    personParam <- NULL
     
     # check data
     if (input$VscoreUseData == "1") { # Default to use scoring data in prior process
@@ -2935,22 +2937,64 @@ server <- function(input, output, session) {
         # prepare parameter
         if (length(inputPersonParam) == 1) {
           personParam <- c(unlist(inputPersonParam[1]))
-        } else {
+        } else { # when two parameters, input$plotPersonShowSE should always be true
+          if (input$plotPersonShowSE == FALSE) {
+            showModal(modalDialog(
+              title = "Warning",
+              "You should check Show SE if you select two parameters!", 
+              easyClose = TRUE
+            ))  
+            return()
+          }
           personParam <- c(unlist(inputPersonParam)[1], unlist(inputPersonParam)[2])
         }
       }
       
-
-      output$visual.person <- renderPlotly({
+      tryCatch({
         if (!(input$plotPersonid ==  "")) { # with task id
           inputPersonid <- strsplit(input$plotPersonid,split=",") #list
           person_Ids <- c(unlist(inputPersonid[1]))
-          plot.person(object = Vscore.data, parameter = personParam, show.se = input$plotPersonShowSE, sort = input$plotPersonSort, person = person_Ids) 
+          plot.obj <- plot.person(object = Vscore.data, parameter = personParam, show.se = input$plotPersonShowSE, sort = input$plotPersonSort, person = person_Ids) 
         } else { # without task id
-          plot.person(object = Vscore.data, parameter = personParam, show.se = input$plotPersonShowSE, sort = input$plotPersonSort)
+          plot.obj <- plot.person(object = Vscore.data, parameter = personParam, show.se = input$plotPersonShowSE, sort = input$plotPersonSort)
         }
+        output$visual.person <- renderPlotly({
+          # if (!(input$plotPersonid ==  "")) { # with task id
+          #   inputPersonid <- strsplit(input$plotPersonid,split=",") #list
+          #   person_Ids <- c(unlist(inputPersonid[1]))
+          #   plot.person(object = Vscore.data, parameter = personParam, show.se = input$plotPersonShowSE, sort = input$plotPersonSort, person = person_Ids) 
+          # } else { # without task id
+          #   plot.person(object = Vscore.data, parameter = personParam, show.se = input$plotPersonShowSE, sort = input$plotPersonSort)
+          # }
+          plot.obj
+        })
+        updateTabsetPanel(session, "visual.Tabset", selected = "Plot.Person") # show plot.person
+      }, error=function(e) {
+        showModal(modalDialog(
+          title = "Error",
+          paste0("Please check your data! Running with error: ", e), 
+          easyClose = TRUE
+        ))
+      }, warning=function(w) {
+        showModal(modalDialog(
+          title = "Warning",
+          paste0("Please check your data! Running with warning: ", w),
+          easyClose = TRUE
+        ))
       })
-      updateTabsetPanel(session, "visual.Tabset", selected = "Plot.Person") # show plot.person
+      
+
+      # output$visual.person <- renderPlotly({
+      #   # if (!(input$plotPersonid ==  "")) { # with task id
+      #   #   inputPersonid <- strsplit(input$plotPersonid,split=",") #list
+      #   #   person_Ids <- c(unlist(inputPersonid[1]))
+      #   #   plot.person(object = Vscore.data, parameter = personParam, show.se = input$plotPersonShowSE, sort = input$plotPersonSort, person = person_Ids) 
+      #   # } else { # without task id
+      #   #   plot.person(object = Vscore.data, parameter = personParam, show.se = input$plotPersonShowSE, sort = input$plotPersonSort)
+      #   # }
+      #   
+      # })
+      # updateTabsetPanel(session, "visual.Tabset", selected = "Plot.Person") # show plot.person
     } else {
       showModal(modalDialog(
         title = "Error-plotting",
